@@ -1,0 +1,762 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fremont vs Mathog — Position Swap Analysis</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: #f0f2f5; color: #1a1a1a; font-size: 13px; }
+
+  .page-header { background: #1f4e78; color: #fff; padding: 16px 28px 12px; }
+  .page-header h1 { font-size: 19px; font-weight: 700; margin-bottom: 4px; }
+  .page-header .sub { font-size: 12px; color: #a8c4e0; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .badge { background: #2e75b6; color: #fff; font-weight: 700; font-size: 11px; padding: 3px 8px; border-radius: 3px; letter-spacing: .08em; text-transform: uppercase; }
+  .badge.green { background: #2d4a1e; }
+  .editable-note { color: #7ec8f0; font-weight: 600; }
+  .reset-btn { background: none; border: 1px solid #5b8ab5; color: #a8c4e0; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 3px; cursor: pointer; }
+  .reset-btn:hover { background: #2e75b6; }
+  #save-status { font-size: 11px; color: #7ec8f0; font-weight: 600; }
+
+  .wrapper { max-width: 960px; margin: 0 auto; padding: 18px 16px 40px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+
+  .card { background: #fff; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.10); margin-bottom: 16px; }
+  .card-header { background: #1f4e78; color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 7px 14px; }
+  .card-header.green  { background: #2d4a1e; }
+  .card-header.teal   { background: #1d6b6b; }
+  .card-header.amber  { background: #7a5500; }
+  .card-header.purple { background: #4a1e6e; }
+  .card-header.slate  { background: #374151; }
+  .card-body { padding: 12px 14px; }
+
+  .sub-header { font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: #1f4e78; border-bottom: 1px solid #d0dcea; padding-bottom: 4px; margin: 10px 0 7px; }
+  .sub-header:first-child { margin-top: 0; }
+
+  .row { display: flex; align-items: center; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #f0f0f0; min-height: 28px; }
+  .row:last-child { border-bottom: none; }
+  .row label { color: #444; flex: 1; padding-right: 10px; }
+  .row .val { min-width: 120px; text-align: right; font-weight: 600; color: #1a1a1a; }
+  .row .val.dash { color: #aaa; font-weight: 400; }
+  .row .val.neg  { color: #c00; }
+  .row .val.pos  { color: #2d7a2d; }
+
+  input[type=text], input[type=date] {
+    border: none; border-bottom: 1.5px solid #2563eb; color: #2563eb; font-weight: 600;
+    font-size: 13px; font-family: Arial, sans-serif; background: transparent;
+    text-align: right; width: 120px; outline: none; padding: 2px 4px;
+  }
+  input[type=text]:focus, input[type=date]:focus { background: #eff6ff; border-radius: 2px 2px 0 0; }
+
+  /* Waterfall mini */
+  .wf-mini { display: flex; align-items: center; gap: 0; margin: 3px 0; }
+  .wf-num { width: 22px; height: 22px; border-radius: 50%; background: #1f4e78; color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .wf-num.green { background: #2d4a1e; }
+  .wf-label { flex: 1; padding: 0 8px; font-size: 12px; color: #333; }
+  .wf-amt { min-width: 100px; text-align: right; font-weight: 700; color: #1f4e78; font-size: 12px; }
+
+  /* Swap table */
+  .swap-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .swap-table thead th { background: #d9e1f2; color: #1a1a1a; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; padding: 7px 10px; text-align: right; border-bottom: 2px solid #b0bfe0; }
+  .swap-table thead th:first-child { text-align: left; }
+  .swap-table tbody tr { border-bottom: 1px solid #eee; }
+  .swap-table tbody td { padding: 7px 10px; vertical-align: middle; text-align: right; }
+  .swap-table tbody td:first-child { text-align: left; font-weight: 700; font-size: 13px; }
+  .swap-table tfoot td { background: #fff2cc; font-weight: 700; padding: 7px 10px; border-top: 2px solid #e0c040; text-align: right; }
+  .swap-table tfoot td:first-child { text-align: left; }
+  .pos-label { font-size: 11px; color: #555; font-weight: 400; display: block; }
+  .deal-tag { font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 2px; text-transform: uppercase; letter-spacing: .06em; display: inline-block; margin-bottom: 2px; }
+  .deal-tag.fremont { background: #d9e1f2; color: #1f4e78; }
+  .deal-tag.mathog  { background: #d5f0e8; color: #1d6b6b; }
+
+  /* Delta cards */
+  .delta-card { background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,.10); padding: 14px; text-align: center; }
+  .delta-card .party-name { font-size: 15px; font-weight: 700; color: #1a1a1a; margin-bottom: 6px; }
+  .delta-card .gives-gets { font-size: 11px; color: #666; line-height: 1.5; margin-bottom: 10px; }
+  .delta-card .delta-val { font-size: 22px; font-weight: 700; }
+  .delta-card .delta-val.pos { color: #2d7a2d; }
+  .delta-card .delta-val.neg { color: #c00; }
+  .delta-card .delta-val.zero { color: #888; }
+  .delta-card .delta-label { font-size: 10px; color: #888; margin-top: 2px; text-transform: uppercase; letter-spacing: .05em; }
+  .delta-card .pos-arrow { font-size: 11px; margin-top: 8px; }
+
+  .notes { font-size: 12px; color: #555; line-height: 1.6; }
+  .notes p { margin-bottom: 5px; }
+  .how-it-works { font-size: 11px; color: #777; line-height: 1.6; padding: 10px 0 0; border-top: 1px solid #eee; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+    <span class="badge green">FREMONT</span>
+    <span style="color:#a8c4e0;">×</span>
+    <span class="badge" style="background:#1d6b6b;">MATHOG</span>
+    <h1>Position Swap Analysis</h1>
+  </div>
+  <div class="sub">
+    <span>As of Date: <input type="date" id="analysisDate" oninput="save('analysisDate');calc()" style="color:#fff;border-bottom-color:#7ec8f0;width:140px;"></span>
+    <span class="editable-note">blue = editable</span>
+    <button class="reset-btn" onclick="resetDefaults()">Reset Defaults</button>
+    <button class="reset-btn" id="file-save-btn" onclick="enableFileSave()">📁 Enable File Auto-Save</button>
+    <span id="save-status"></span>
+  </div>
+</div>
+
+<div class="wrapper">
+
+  <!-- ═══ Deal Inputs ═══ -->
+  <div class="grid-2">
+
+    <!-- Mathog Inputs -->
+    <div class="card">
+      <div class="card-header teal">Mathog — Deal Inputs</div>
+      <div class="card-body">
+        <div class="sub-header">Dates</div>
+        <div class="row"><label>Pref Start Date</label><input type="date" id="mathogPrefStart" oninput="save('mathogPrefStart');calc()"></div>
+
+        <div class="sub-header">Tenant Rent Roll &amp; Valuation</div>
+        <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:0;font-size:11px;font-weight:700;color:#444;padding:3px 0 4px;border-bottom:1px solid #e0e0e0;">
+          <span>Tenant</span><span style="text-align:right;min-width:90px;">NNN Rent</span><span style="text-align:right;min-width:70px;">Cap Rate</span><span style="text-align:right;min-width:90px;">Value</span>
+        </div>
+        <div class="row">
+          <label>Tenant 1</label>
+          <input type="text" id="t1Rent" oninput="save('t1Rent');calc()" style="width:85px;">
+          <input type="text" id="t1Cap" oninput="save('t1Cap');calc()" style="width:60px;">
+          <span class="val dash" id="t1Val">—</span>
+        </div>
+        <div class="row">
+          <label>Tenant 2</label>
+          <input type="text" id="t2Rent" oninput="save('t2Rent');calc()" style="width:85px;">
+          <input type="text" id="t2Cap" oninput="save('t2Cap');calc()" style="width:60px;">
+          <span class="val dash" id="t2Val">—</span>
+        </div>
+        <div class="row">
+          <label>Tenant 3</label>
+          <input type="text" id="t3Rent" oninput="save('t3Rent');calc()" style="width:85px;">
+          <input type="text" id="t3Cap" oninput="save('t3Cap');calc()" style="width:60px;">
+          <span class="val dash" id="t3Val">—</span>
+        </div>
+        <div class="row" style="background:#f8f9fa;font-weight:700;">
+          <label>Total Property Value</label><span class="val dash" id="mathogPropVal">—</span>
+        </div>
+
+        <div class="sub-header">Sale Costs &amp; Debt</div>
+        <div class="row"><label>Cost of Sale %</label><input type="text" id="mathogCostPct" oninput="save('mathogCostPct');calc()"></div>
+        <div class="row"><label>Tenant Improvements</label><input type="text" id="mathogTI" oninput="save('mathogTI');calc()"></div>
+        <div class="row"><label>Leasing Commissions</label><input type="text" id="mathogLC" oninput="save('mathogLC');calc()"></div>
+        <div class="row"><label>Bank Debt Payoff</label><input type="text" id="mathogDebt" oninput="save('mathogDebt');calc()"></div>
+        <div class="row" style="background:#f8f9fa;font-weight:700;border-top:2px solid #d9e1f2;">
+          <label>Net Equity Available</label><span class="val dash" id="mathogNetEq">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fremont Inputs -->
+    <div class="card">
+      <div class="card-header">Fremont — Deal Inputs</div>
+      <div class="card-body">
+        <div class="sub-header">Dates</div>
+        <div class="row"><label>Pref Start Date</label><input type="date" id="fremontPrefStart" oninput="save('fremontPrefStart');calc()"></div>
+        <div class="row"><label>GR2 Pref Start Date</label><input type="date" id="gr2PrefStart" oninput="save('gr2PrefStart');calc()"></div>
+
+        <div class="sub-header">Valuation</div>
+        <div class="row"><label>Property Value</label><input type="text" id="fremontPropVal" oninput="save('fremontPropVal');calc()"></div>
+
+        <div class="sub-header">Sale Costs &amp; Debt</div>
+        <div class="row"><label>Cost of Sale %</label><input type="text" id="fremontCostPct" oninput="save('fremontCostPct');calc()"></div>
+        <div class="row"><label>Tenant Improvements</label><input type="text" id="fremontTI" oninput="save('fremontTI');calc()"></div>
+        <div class="row"><label>Leasing Commissions</label><input type="text" id="fremontLC" oninput="save('fremontLC');calc()"></div>
+        <div class="row"><label>Bank Debt Payoff</label><input type="text" id="fremontDebt" oninput="save('fremontDebt');calc()"></div>
+        <div class="row" style="background:#f8f9fa;font-weight:700;border-top:2px solid #d9e1f2;">
+          <label>Net Equity Available</label><span class="val dash" id="fremontNetEq">—</span>
+        </div>
+
+        <div class="sub-header">Equity Stack</div>
+        <div class="row"><label>GR — Pref Equity</label><input type="text" id="grPrefEq" oninput="save('grPrefEq');calc()"></div>
+        <div class="row"><label>GR — Pref Rate</label><input type="text" id="grPrefRate" oninput="save('grPrefRate');calc()"></div>
+        <div class="row"><label>GR2 — Pref Equity</label><input type="text" id="gr2PrefEq" oninput="save('gr2PrefEq');calc()"></div>
+        <div class="row"><label>GR2 — Pref Rate</label><input type="text" id="gr2PrefRate" oninput="save('gr2PrefRate');calc()"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Current Distributions ═══ -->
+  <div class="grid-2">
+
+    <!-- Mathog waterfall -->
+    <div class="card">
+      <div class="card-header teal">Mathog — Current Distributions</div>
+      <div class="card-body">
+        <div style="font-size:11px;color:#888;margin-bottom:8px;">
+          Accrued: <strong id="mathogYears">—</strong> &nbsp;|&nbsp; Net Equity: <strong id="mathogNetEq2">—</strong>
+        </div>
+        <div class="wf-mini"><div class="wf-num">1</div><div class="wf-label">GR (Outside Investor) — Accrued Pref</div><div class="wf-amt" id="m_t1">—</div></div>
+        <div class="wf-mini"><div class="wf-num">2</div><div class="wf-label">GR — Return of Capital</div><div class="wf-amt" id="m_t2">—</div></div>
+        <div class="wf-mini"><div class="wf-num">3</div><div class="wf-label">RS &amp; RG — Accrued Prefs</div><div class="wf-amt" id="m_t3">—</div></div>
+        <div class="wf-mini"><div class="wf-num">4</div><div class="wf-label">RS &amp; RG — Return of Pref Capital</div><div class="wf-amt" id="m_t4">—</div></div>
+        <div class="wf-mini"><div class="wf-num">5</div><div class="wf-label">Common Equity — Pro-rata (JB / RS / RG)</div><div class="wf-amt" id="m_t5">—</div></div>
+        <div class="wf-mini"><div class="wf-num green">6</div><div class="wf-label" style="color:#2d4a1e;font-weight:700;">Residual — Split ÷ 3 (JB / RS / RG)</div><div class="wf-amt" style="color:#2d4a1e;" id="m_t6">—</div></div>
+        <div style="border-top:1px solid #eee;margin-top:8px;padding-top:8px;">
+          <div class="row"><label style="font-weight:700;color:#1d6b6b;">GR total (OI)</label><span class="val dash" id="m_gr_tot">—</span></div>
+          <div class="row"><label style="font-weight:700;">JB total (P1)</label><span class="val dash" id="m_jb_tot">—</span></div>
+          <div class="row"><label style="font-weight:700;">RS total (P2)</label><span class="val dash" id="m_rs_tot">—</span></div>
+          <div class="row"><label style="font-weight:700;">RG total (P3)</label><span class="val dash" id="m_rg_tot">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fremont waterfall -->
+    <div class="card">
+      <div class="card-header">Fremont — Current Distributions</div>
+      <div class="card-body">
+        <div style="font-size:11px;color:#888;margin-bottom:8px;">
+          Accrued (GR): <strong id="fremontYears">—</strong> &nbsp;|&nbsp; Net Equity: <strong id="fremontNetEq2">—</strong>
+        </div>
+        <div class="wf-mini"><div class="wf-num">1</div><div class="wf-label">GR — Accrued Pref</div><div class="wf-amt" id="f_t1">—</div></div>
+        <div class="wf-mini"><div class="wf-num">2</div><div class="wf-label">GR — Return of Capital</div><div class="wf-amt" id="f_t2">—</div></div>
+        <div class="wf-mini"><div class="wf-num" style="background:#2d7a2d;">3</div><div class="wf-label">GR2 — Accrued Pref</div><div class="wf-amt" id="f_t3">—</div></div>
+        <div class="wf-mini"><div class="wf-num" style="background:#2d7a2d;">4</div><div class="wf-label">GR2 — Return of Capital</div><div class="wf-amt" id="f_t4">—</div></div>
+        <div class="wf-mini"><div class="wf-num">5–7</div><div class="wf-label">Partner prefs / common equity</div><div class="wf-amt" id="f_t57">—</div></div>
+        <div class="wf-mini"><div class="wf-num green">8</div><div class="wf-label" style="color:#2d4a1e;font-weight:700;">Residual — Split ÷ 3 (JB / RS / RG)</div><div class="wf-amt" style="color:#2d4a1e;" id="f_t8">—</div></div>
+        <div style="border-top:1px solid #eee;margin-top:8px;padding-top:8px;">
+          <div class="row"><label style="font-weight:700;">GR total (pref)</label><span class="val dash" id="f_gr_tot">—</span></div>
+          <div class="row"><label style="font-weight:700;">GR2 total</label><span class="val dash" id="f_gr2_tot">—</span></div>
+          <div class="row"><label style="font-weight:700;">JB total (residual)</label><span class="val dash" id="f_jb_tot">—</span></div>
+          <div class="row"><label style="font-weight:700;">RS total (residual)</label><span class="val dash" id="f_rs_tot">—</span></div>
+          <div class="row"><label style="font-weight:700;">RG total (residual)</label><span class="val dash" id="f_rg_tot">—</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Position Swap Comparison ═══ -->
+  <div class="card">
+    <div class="card-header purple">Position Swap Comparison — As of <span id="hdr_date">—</span></div>
+    <div class="card-body" style="padding:0;">
+      <table class="swap-table">
+        <thead>
+          <tr>
+            <th>Party</th>
+            <th>Current Position</th>
+            <th>Current Value</th>
+            <th>Swapped Position</th>
+            <th>Swapped Value</th>
+            <th>Cash Delta</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>JB</td>
+            <td><span class="deal-tag mathog">Mathog</span><br><span class="pos-label">Partner 1 — Common equity ($485k), pro-rata common &amp; residual ÷3</span></td>
+            <td id="sw_jb_cur">—</td>
+            <td><span class="deal-tag fremont">Fremont</span><br><span class="pos-label">GR's position — $500k pref @10%, priority tiers 1–2</span></td>
+            <td id="sw_jb_new">—</td>
+            <td id="sw_jb_delta" style="font-size:15px;font-weight:700;">—</td>
+          </tr>
+          <tr>
+            <td>RS</td>
+            <td><span class="deal-tag mathog">Mathog</span><br><span class="pos-label">Partner 2 — $275k pref @10%, common equity ($485k)</span></td>
+            <td id="sw_rs_cur">—</td>
+            <td><span class="deal-tag fremont">Fremont</span><br><span class="pos-label">RG's position — 1/3 of Fremont residual (tier 8)</span></td>
+            <td id="sw_rs_new">—</td>
+            <td id="sw_rs_delta" style="font-size:15px;font-weight:700;">—</td>
+          </tr>
+          <tr>
+            <td>GR</td>
+            <td><span class="deal-tag fremont">Fremont</span><br><span class="pos-label">$500k pref @10%, priority tiers 1–2</span></td>
+            <td id="sw_gr_cur">—</td>
+            <td><span class="deal-tag mathog">Mathog</span><br><span class="pos-label">JB's position — Common equity ($485k), pro-rata common &amp; residual ÷3</span></td>
+            <td id="sw_gr_new">—</td>
+            <td id="sw_gr_delta" style="font-size:15px;font-weight:700;">—</td>
+          </tr>
+          <tr>
+            <td>RG</td>
+            <td><span class="deal-tag fremont">Fremont</span><br><span class="pos-label">1/3 of Fremont residual (tier 8)</span></td>
+            <td id="sw_rg_cur">—</td>
+            <td><span class="deal-tag mathog">Mathog</span><br><span class="pos-label">RS's position — $275k pref @10%, common equity ($485k)</span></td>
+            <td id="sw_rg_new">—</td>
+            <td id="sw_rg_delta" style="font-size:15px;font-weight:700;">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="how-it-works" style="padding:10px 14px 14px;">
+      <strong>Swap logic:</strong> JB gives up Mathog Partner 1 → receives GR's Fremont pref position.
+      RS gives up Mathog Partner 2 → receives RG's 1/3 Fremont residual.
+      GR gives up Fremont pref → receives JB's Mathog P1.
+      RG gives up Fremont residual → receives RS's Mathog P2.
+      Cash Delta = Swapped Value − Current Value. Positive = better off, negative = worse off.
+      Note: other positions each party holds (e.g. JB's own Fremont residual, GR's Mathog OI position) are unchanged and not shown here.
+    </div>
+  </div>
+
+  <!-- ═══ Delta Cards ═══ -->
+  <div class="grid-4">
+    <div class="delta-card">
+      <div class="party-name">JB</div>
+      <div class="gives-gets">Gives up: Mathog P1<br>Receives: GR's Fremont pref</div>
+      <div class="delta-val" id="dc_jb_delta">—</div>
+      <div class="delta-label" id="dc_jb_label">—</div>
+      <div class="pos-arrow" id="dc_jb_arrow"></div>
+    </div>
+    <div class="delta-card">
+      <div class="party-name">RS</div>
+      <div class="gives-gets">Gives up: Mathog P2<br>Receives: RG's Fremont residual</div>
+      <div class="delta-val" id="dc_rs_delta">—</div>
+      <div class="delta-label" id="dc_rs_label">—</div>
+      <div class="pos-arrow" id="dc_rs_arrow"></div>
+    </div>
+    <div class="delta-card">
+      <div class="party-name">GR</div>
+      <div class="gives-gets">Gives up: Fremont pref<br>Receives: JB's Mathog P1</div>
+      <div class="delta-val" id="dc_gr_delta">—</div>
+      <div class="delta-label" id="dc_gr_label">—</div>
+      <div class="pos-arrow" id="dc_gr_arrow"></div>
+    </div>
+    <div class="delta-card">
+      <div class="party-name">RG</div>
+      <div class="gives-gets">Gives up: Fremont residual<br>Receives: RS's Mathog P2</div>
+      <div class="delta-val" id="dc_rg_delta">—</div>
+      <div class="delta-label" id="dc_rg_label">—</div>
+      <div class="pos-arrow" id="dc_rg_arrow"></div>
+    </div>
+  </div>
+
+  <!-- ═══ Cash Equalization ═══ -->
+  <div class="card">
+    <div class="card-header" style="background:#5a3e8a;">Cash Equalization — What Each Party Pays to Make the Swap Fair</div>
+    <div class="card-body" style="padding:0;">
+      <table class="swap-table">
+        <thead>
+          <tr>
+            <th>Swap Pair</th>
+            <th>Better-Off Party</th>
+            <th>Worse-Off Party</th>
+            <th>Advantage</th>
+            <th>Equalization Payment</th>
+            <th>Direction</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:700;">JB ↔ GR</td>
+            <td id="eq_jbgr_winner">—</td>
+            <td id="eq_jbgr_loser">—</td>
+            <td id="eq_jbgr_adv">—</td>
+            <td id="eq_jbgr_pay" style="font-weight:700;font-size:14px;">—</td>
+            <td id="eq_jbgr_dir" style="font-size:12px;color:#555;">—</td>
+          </tr>
+          <tr>
+            <td style="font-weight:700;">RS ↔ RG</td>
+            <td id="eq_rsrg_winner">—</td>
+            <td id="eq_rsrg_loser">—</td>
+            <td id="eq_rsrg_adv">—</td>
+            <td id="eq_rsrg_pay" style="font-weight:700;font-size:14px;">—</td>
+            <td id="eq_rsrg_dir" style="font-size:12px;color:#555;">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="how-it-works" style="padding:8px 14px 12px;">
+      Equalization = the full cash delta. The better-off party pays the worse-off party this amount at the time of the swap so that both are economically indifferent. After payment, net gain for both parties = $0.
+    </div>
+  </div>
+
+  <!-- ═══ Post-Swap Fremont Ownership ═══ -->
+  <div class="card">
+    <div class="card-header green">Post-Swap Fremont Residual Ownership &amp; JB Buy-Up to 50/50</div>
+    <div class="card-body">
+
+      <div class="sub-header">Fremont Residual (Tier 8) — Before vs. After Swap</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="background:#f0f4f8;">
+            <th style="text-align:left;padding:5px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #ccc;">Party</th>
+            <th style="text-align:right;padding:5px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #ccc;">Before — Share</th>
+            <th style="text-align:right;padding:5px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #ccc;">Before — $</th>
+            <th style="text-align:right;padding:5px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #ccc;">After — Share</th>
+            <th style="text-align:right;padding:5px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #ccc;">After — $</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #eee;">
+            <td style="padding:5px 8px;font-weight:700;">JB</td>
+            <td style="text-align:right;padding:5px 8px;color:#555;">1/3 — 33.3%</td>
+            <td style="text-align:right;padding:5px 8px;font-weight:600;" id="own_jb_before">—</td>
+            <td style="text-align:right;padding:5px 8px;color:#555;">1/3 — 33.3%</td>
+            <td style="text-align:right;padding:5px 8px;font-weight:600;" id="own_jb_after">—</td>
+          </tr>
+          <tr style="border-bottom:1px solid #eee;">
+            <td style="padding:5px 8px;font-weight:700;">RS</td>
+            <td style="text-align:right;padding:5px 8px;color:#555;">1/3 — 33.3%</td>
+            <td style="text-align:right;padding:5px 8px;font-weight:600;" id="own_rs_before">—</td>
+            <td style="text-align:right;padding:5px 8px;color:#c00;font-weight:700;">2/3 — 66.7%</td>
+            <td style="text-align:right;padding:5px 8px;font-weight:600;color:#c00;" id="own_rs_after">—</td>
+          </tr>
+          <tr style="border-bottom:1px solid #eee;">
+            <td style="padding:5px 8px;font-weight:700;">RG</td>
+            <td style="text-align:right;padding:5px 8px;color:#555;">1/3 — 33.3%</td>
+            <td style="text-align:right;padding:5px 8px;font-weight:600;" id="own_rg_before">—</td>
+            <td style="text-align:right;padding:5px 8px;color:#888;">0 — exits</td>
+            <td style="text-align:right;padding:5px 8px;color:#aaa;">—</td>
+          </tr>
+          <tr style="background:#fff2cc;font-weight:700;border-top:2px solid #e0c040;">
+            <td style="padding:5px 8px;">Total Residual (Tier 8)</td>
+            <td style="text-align:right;padding:5px 8px;">100%</td>
+            <td style="text-align:right;padding:5px 8px;" id="own_total_before">—</td>
+            <td style="text-align:right;padding:5px 8px;">100%</td>
+            <td style="text-align:right;padding:5px 8px;" id="own_total_after">—</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="sub-header" style="margin-top:16px;">Post-Swap: JB vs. RS Pro-Rata Among Remaining Partners</div>
+      <div class="row"><label>JB share of residual</label><span class="val" id="own_jb_pct">33.33%</span></div>
+      <div class="row"><label>RS share of residual</label><span class="val" id="own_rs_pct">66.67%</span></div>
+      <div class="row"><label>JB residual value</label><span class="val dash" id="own_jb_val">—</span></div>
+      <div class="row"><label>RS residual value</label><span class="val dash" id="own_rs_val">—</span></div>
+
+      <div class="sub-header" style="margin-top:16px;color:#5a3e8a;border-bottom-color:#c4b0e0;">JB Buy-Up to 50/50 with RS</div>
+      <div style="font-size:11px;color:#888;margin-bottom:8px;">JB buys 1/6 of the total residual from RS to equalize to 50% / 50%</div>
+      <div class="row"><label>JB target share</label><span class="val">50.00%</span></div>
+      <div class="row"><label>JB current share (post-swap)</label><span class="val">33.33%</span></div>
+      <div class="row"><label>Additional share JB must acquire</label><span class="val">16.67% (= 1/6)</span></div>
+      <div class="row" style="background:#f3eeff;border-radius:4px;padding:6px 0;">
+        <label style="font-weight:700;color:#5a3e8a;">JB pays RS (1/6 × residual)</label>
+        <span class="val dash" style="font-size:16px;color:#5a3e8a;" id="own_jb_buyup">—</span>
+      </div>
+      <div class="row" style="margin-top:4px;">
+        <label>After buy-up: JB residual value (net of payment)</label>
+        <span class="val dash" id="own_jb_net_buyup">—</span>
+      </div>
+      <div class="row">
+        <label>After buy-up: RS residual value (net of receipt)</label>
+        <span class="val dash" id="own_rs_net_buyup">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Notes ═══ -->
+  <div class="card">
+    <div class="card-header slate">Deal Structure Notes</div>
+    <div class="card-body notes">
+      <p><strong>Mathog equity stack:</strong> GR = Outside Investor ($500k pref @10%). JB = Partner 1 ($485k common, no pref). RS = Partner 2 ($275k pref @10%, $485k common). RG = Partner 3 ($300k pref @10%, $485k common). JB/RS/RG split common returns and residual equally.</p>
+      <p><strong>Fremont equity stack:</strong> GR = $500k pref @10% (first priority). GR2 = $103,768 pref @10% (accruing from 10/14/2022, second priority). JB, RS, RG = no pref equity; equal 1/3 residual split.</p>
+      <p><strong>Pref calculation:</strong> Simple interest — rate × years × pref equity. Years = days from pref start to Analysis Date ÷ 365.</p>
+      <p><strong>The swap:</strong> A pure position exchange — no cash changes hands in this model. The delta shows who benefits and by how much based on deal economics at the selected date.</p>
+    </div>
+  </div>
+
+</div><!-- /wrapper -->
+
+<script>
+// ─── Defaults ────────────────────────────────────────────────────────────────
+const DEFAULTS = {
+  analysisDate:     '2026-07-01',
+  // Mathog
+  mathogPrefStart:  '2022-09-13',
+  t1Rent: '215000', t1Cap: '5.75%',
+  t2Rent: '77500',  t2Cap: '5.25%',
+  t3Rent: '125000', t3Cap: '7.00%',
+  mathogCostPct: '2.00%', mathogTI: '150000', mathogLC: '150000', mathogDebt: '4100000',
+  // Fremont
+  fremontPrefStart: '2022-09-13',
+  gr2PrefStart:     '2022-10-14',
+  fremontPropVal:   '10000000',
+  fremontCostPct:   '2.00%', fremontTI: '0', fremontLC: '0', fremontDebt: '6800000',
+  grPrefEq: '500000', grPrefRate: '10.00%',
+  gr2PrefEq: '103768', gr2PrefRate: '10.00%',
+};
+
+// ─── File Auto-Save ───────────────────────────────────────────────────────────
+let _fileHandle = null, _saveTimer = null;
+async function enableFileSave() {
+  if (!window.showOpenFilePicker) { setSaveStatus('⚠ Use Chrome for file save','#c00'); return; }
+  try {
+    const [h] = await window.showOpenFilePicker({ types:[{description:'HTML',accept:{'text/html':['.html']}}], multiple:false });
+    _fileHandle = h;
+    document.getElementById('file-save-btn').textContent = '📁 File Auto-Save ON';
+    setSaveStatus('Enabled ✓','#7ec8f0');
+    await writeToFile();
+  } catch(e) { if(e.name!=='AbortError') setSaveStatus('Error: '+e.message,'#f87'); }
+}
+async function writeToFile() {
+  if (!_fileHandle) return;
+  try {
+    const cur = {}; Object.keys(DEFAULTS).forEach(id => { const el=document.getElementById(id); cur[id]=el?el.value:DEFAULTS[id]; });
+    const nd = `const DEFAULTS = {\n  analysisDate:     '${cur.analysisDate}',\n  // Mathog\n  mathogPrefStart:  '${cur.mathogPrefStart}',\n  t1Rent: '${cur.t1Rent}', t1Cap: '${cur.t1Cap}',\n  t2Rent: '${cur.t2Rent}',  t2Cap: '${cur.t2Cap}',\n  t3Rent: '${cur.t3Rent}', t3Cap: '${cur.t3Cap}',\n  mathogCostPct: '${cur.mathogCostPct}', mathogTI: '${cur.mathogTI}', mathogLC: '${cur.mathogLC}', mathogDebt: '${cur.mathogDebt}',\n  // Fremont\n  fremontPrefStart: '${cur.fremontPrefStart}',\n  gr2PrefStart:     '${cur.gr2PrefStart}',\n  fremontPropVal:   '${cur.fremontPropVal}',\n  fremontCostPct:   '${cur.fremontCostPct}', fremontTI: '${cur.fremontTI}', fremontLC: '${cur.fremontLC}', fremontDebt: '${cur.fremontDebt}',\n  grPrefEq: '${cur.grPrefEq}', grPrefRate: '${cur.grPrefRate}',\n  gr2PrefEq: '${cur.gr2PrefEq}', gr2PrefRate: '${cur.gr2PrefRate}',\n};`;
+    const file = await _fileHandle.getFile(); let html = await file.text();
+    html = html.replace(/const DEFAULTS = \{[\s\S]*?\};/, nd);
+    const w = await _fileHandle.createWritable(); await w.write(html); await w.close();
+    setSaveStatus('Saved ✓ '+new Date().toLocaleTimeString(),'#7ec8f0');
+  } catch(e) { setSaveStatus('Save failed','#f87'); }
+}
+function scheduleFileSave() { clearTimeout(_saveTimer); _saveTimer=setTimeout(writeToFile,700); }
+function setSaveStatus(m,c) { const el=document.getElementById('save-status'); if(el){el.textContent=m;el.style.color=c||'#7ec8f0';} }
+
+// ─── Persistence ──────────────────────────────────────────────────────────────
+function save(id) { const el=document.getElementById(id); if(el){ localStorage.setItem('swap_'+id,el.value); if(_fileHandle)scheduleFileSave(); } }
+function load(id) { return localStorage.getItem('swap_'+id); }
+function initInputs() { Object.keys(DEFAULTS).forEach(id=>{ const el=document.getElementById(id); if(!el)return; const s=load(id); el.value=(s!==null)?s:DEFAULTS[id]; }); }
+function resetDefaults() {
+  if(!confirm('Reset all inputs to defaults?')) return;
+  Object.keys(DEFAULTS).forEach(id=>{ localStorage.removeItem('swap_'+id); const el=document.getElementById(id); if(el)el.value=DEFAULTS[id]; });
+  calc();
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+const fmt = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:0,maximumFractionDigits:0});
+const fmtY = new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+function parseMoney(s) { return parseFloat(String(s).replace(/[$,%\s]/g,''))||0; }
+function parsePct(s) { const v=parseFloat(String(s).replace(/[%\s]/g,'')); return isNaN(v)?0:(v>1?v/100:v); }
+function daysBetween(a,b) { const s=new Date(a+'T00:00:00'),e=new Date(b+'T00:00:00'); if(isNaN(s)||isNaN(e))return null; return Math.round((e-s)/86400000); }
+function setM(id,v,force0) {
+  const el=document.getElementById(id); if(!el)return;
+  if(v===null||isNaN(v)){el.textContent='—';el.className='val dash';return;}
+  el.textContent=fmt.format(v);
+  el.className='val'+(v<0?' neg':v>0?' pos':'');
+}
+function setMCell(id,v) { const el=document.getElementById(id); if(!el)return; if(v===null||isNaN(v)){el.textContent='—';return;} el.textContent=fmt.format(v); }
+function setTxt(id,v) { const el=document.getElementById(id); if(el)el.textContent=v; }
+function setWfAmt(id,v) { const el=document.getElementById(id); if(!el)return; el.textContent=(v===null||isNaN(v))?'—':fmt.format(v); }
+
+// ─── Main Calc ────────────────────────────────────────────────────────────────
+function calc() {
+  const analysisDate = document.getElementById('analysisDate').value;
+  document.getElementById('hdr_date').textContent = analysisDate || '—';
+
+  // ── MATHOG ──────────────────────────────────────────────────────────────
+  const mathogStart = document.getElementById('mathogPrefStart').value;
+  const mDays = daysBetween(mathogStart, analysisDate);
+  const mYears = mDays !== null ? mDays / 365 : 0;
+  setTxt('mathogYears', mDays !== null ? fmtY.format(mYears)+' yrs' : '—');
+
+  const t1r = parseMoney(document.getElementById('t1Rent').value);
+  const t1c = parsePct(document.getElementById('t1Cap').value);
+  const t2r = parseMoney(document.getElementById('t2Rent').value);
+  const t2c = parsePct(document.getElementById('t2Cap').value);
+  const t3r = parseMoney(document.getElementById('t3Rent').value);
+  const t3c = parsePct(document.getElementById('t3Cap').value);
+  const t1v = t1c > 0 ? t1r / t1c : 0;
+  const t2v = t2c > 0 ? t2r / t2c : 0;
+  const t3v = t3c > 0 ? t3r / t3c : 0;
+  setM('t1Val', t1v || null); setM('t2Val', t2v || null); setM('t3Val', t3v || null);
+  const mathogProp = t1v + t2v + t3v;
+  setM('mathogPropVal', mathogProp || null);
+
+  const mCostPct = parsePct(document.getElementById('mathogCostPct').value);
+  const mTI      = parseMoney(document.getElementById('mathogTI').value);
+  const mLC      = parseMoney(document.getElementById('mathogLC').value);
+  const mDebt    = parseMoney(document.getElementById('mathogDebt').value);
+  const mathogNetEquity = mathogProp - mathogProp * mCostPct - mTI - mLC - mDebt;
+  setM('mathogNetEq', mathogProp ? mathogNetEquity : null);
+  setTxt('mathogNetEq2', mathogProp ? fmt.format(mathogNetEquity) : '—');
+
+  // Mathog equity stack (fixed)
+  const mGrPref = 500000, mGrRate = 0.10;
+  const mRsPref = 275000, mRsRate = 0.10;
+  const mRgPref = 300000, mRgRate = 0.10;
+  const mJbCom = 485000, mRsCom = 485000, mRgCom = 485000;
+  const mTotalCom = mJbCom + mRsCom + mRgCom;
+
+  // Accrued prefs
+  const mGrAcc = mGrPref * mGrRate * mYears;
+  const mRsAcc = mRsPref * mRsRate * mYears;
+  const mRgAcc = mRgPref * mRgRate * mYears;
+  const mPartnerAcc = mRsAcc + mRgAcc;
+  const mPartnerPref = mRsPref + mRgPref;
+
+  // Waterfall
+  let rem = mathogNetEquity;
+  const mt1 = Math.max(0, Math.min(rem, mGrAcc));   rem -= mt1;
+  const mt2 = Math.max(0, Math.min(rem, mGrPref));   rem -= mt2;
+  const mt3 = Math.max(0, Math.min(rem, mPartnerAcc)); rem -= mt3;
+  const mt4 = Math.max(0, Math.min(rem, mPartnerPref)); rem -= mt4;
+  const mt5 = Math.max(0, Math.min(rem, mTotalCom));  rem -= mt5;
+  const mt6 = Math.max(0, rem);
+
+  setWfAmt('m_t1', mt1); setWfAmt('m_t2', mt2); setWfAmt('m_t3', mt3);
+  setWfAmt('m_t4', mt4); setWfAmt('m_t5', mt5); setWfAmt('m_t6', mt6);
+
+  // Party distributions
+  const mGrTot = mt1 + mt2;
+  const rsAccShare = mPartnerAcc > 0 ? mt3 * (mRsAcc / mPartnerAcc) : 0;
+  const rgAccShare = mPartnerAcc > 0 ? mt3 * (mRgAcc / mPartnerAcc) : 0;
+  const rsCapShare = mPartnerPref > 0 ? mt4 * (mRsPref / mPartnerPref) : 0;
+  const rgCapShare = mPartnerPref > 0 ? mt4 * (mRgPref / mPartnerPref) : 0;
+  const comEach = mt5 / 3;
+  const resEach = mt6 / 3;
+
+  const mJbTot = comEach + resEach;
+  const mRsTot = rsAccShare + rsCapShare + comEach + resEach;
+  const mRgTot = rgAccShare + rgCapShare + comEach + resEach;
+
+  setM('m_gr_tot', mGrTot || null); setM('m_jb_tot', mJbTot || null);
+  setM('m_rs_tot', mRsTot || null); setM('m_rg_tot', mRgTot || null);
+
+  // ── FREMONT ─────────────────────────────────────────────────────────────
+  const fremontStart = document.getElementById('fremontPrefStart').value;
+  const gr2Start     = document.getElementById('gr2PrefStart').value;
+  const fDays  = daysBetween(fremontStart, analysisDate);
+  const fYears = fDays !== null ? fDays / 365 : 0;
+  const gr2Days  = daysBetween(gr2Start, analysisDate);
+  const gr2Years = gr2Days !== null ? gr2Days / 365 : 0;
+  setTxt('fremontYears', fDays !== null ? fmtY.format(fYears)+' yrs' : '—');
+
+  const fPropVal  = parseMoney(document.getElementById('fremontPropVal').value);
+  const fCostPct  = parsePct(document.getElementById('fremontCostPct').value);
+  const fTI       = parseMoney(document.getElementById('fremontTI').value);
+  const fLC       = parseMoney(document.getElementById('fremontLC').value);
+  const fDebt     = parseMoney(document.getElementById('fremontDebt').value);
+  const fremontNetEquity = fPropVal - fPropVal * fCostPct - fTI - fLC - fDebt;
+  setM('fremontNetEq', fPropVal ? fremontNetEquity : null);
+  setTxt('fremontNetEq2', fPropVal ? fmt.format(fremontNetEquity) : '—');
+
+  const grPrefEq  = parseMoney(document.getElementById('grPrefEq').value);
+  const grRate    = parsePct(document.getElementById('grPrefRate').value);
+  const gr2PrefEq = parseMoney(document.getElementById('gr2PrefEq').value);
+  const gr2Rate   = parsePct(document.getElementById('gr2PrefRate').value);
+
+  const grAcc  = grPrefEq  * grRate  * fYears;
+  const gr2Acc = gr2PrefEq * gr2Rate * gr2Years;
+
+  let frem = fremontNetEquity;
+  const ft1 = Math.max(0, Math.min(frem, grAcc));    frem -= ft1;
+  const ft2 = Math.max(0, Math.min(frem, grPrefEq)); frem -= ft2;
+  const ft3 = Math.max(0, Math.min(frem, gr2Acc));   frem -= ft3;
+  const ft4 = Math.max(0, Math.min(frem, gr2PrefEq));frem -= ft4;
+  // tiers 5–7: no partner prefs or common → $0
+  const ft8 = Math.max(0, frem);
+
+  setWfAmt('f_t1', ft1); setWfAmt('f_t2', ft2); setWfAmt('f_t3', ft3);
+  setWfAmt('f_t4', ft4); setWfAmt('f_t57', 0);  setWfAmt('f_t8', ft8);
+
+  const fGrTot  = ft1 + ft2;
+  const fGr2Tot = ft3 + ft4;
+  const fResEach = ft8 / 3;
+
+  setM('f_gr_tot',  fGrTot  || null); setM('f_gr2_tot', fGr2Tot || null);
+  setM('f_jb_tot',  fResEach || null); setM('f_rs_tot', fResEach || null);
+  setM('f_rg_tot',  fResEach || null);
+
+  // ── SWAP ANALYSIS ────────────────────────────────────────────────────────
+  // Positions being swapped:
+  const mathogP1   = mJbTot;    // JB's current Mathog position (P1)
+  const mathogP2   = mRsTot;    // RS's current Mathog position (P2)
+  const fremontGR  = fGrTot;    // GR's current Fremont position (pref tiers 1–2)
+  const fremontRG  = fResEach;  // RG's current Fremont position (1/3 residual)
+
+  // Deltas
+  const jbDelta = fremontGR - mathogP1;   // JB: gives P1, gets GR's Fremont pref
+  const rsDelta = fremontRG - mathogP2;   // RS: gives P2, gets RG's Fremont residual
+  const grDelta = mathogP1  - fremontGR;  // GR: gives Fremont pref, gets P1
+  const rgDelta = mathogP2  - fremontRG;  // RG: gives Fremont residual, gets P2
+
+  // Swap table
+  setMCell('sw_jb_cur', mathogP1);   setMCell('sw_jb_new', fremontGR);
+  setMCell('sw_rs_cur', mathogP2);   setMCell('sw_rs_new', fremontRG);
+  setMCell('sw_gr_cur', fremontGR);  setMCell('sw_gr_new', mathogP1);
+  setMCell('sw_rg_cur', fremontRG);  setMCell('sw_rg_new', mathogP2);
+
+  function setDeltaCell(id, v) {
+    const el = document.getElementById(id); if(!el)return;
+    el.textContent = fmt.format(v);
+    el.style.color = v > 0 ? '#2d7a2d' : v < 0 ? '#c00' : '#888';
+  }
+  setDeltaCell('sw_jb_delta', jbDelta); setDeltaCell('sw_rs_delta', rsDelta);
+  setDeltaCell('sw_gr_delta', grDelta); setDeltaCell('sw_rg_delta', rgDelta);
+
+  // Delta cards
+  function fillCard(prefix, delta, curVal, newVal) {
+    const el = document.getElementById('dc_'+prefix+'_delta');
+    const lb = document.getElementById('dc_'+prefix+'_label');
+    const ar = document.getElementById('dc_'+prefix+'_arrow');
+    if (!el) return;
+    el.textContent = fmt.format(delta);
+    el.className = 'delta-val' + (delta > 0 ? ' pos' : delta < 0 ? ' neg' : ' zero');
+    lb.textContent = (delta > 0 ? '▲ Better off' : delta < 0 ? '▼ Worse off' : '= No change') + ' vs current position';
+    ar.textContent = delta > 0
+      ? `Was ${fmt.format(curVal)} → Now ${fmt.format(newVal)}`
+      : `Was ${fmt.format(curVal)} → Now ${fmt.format(newVal)}`;
+  }
+  fillCard('jb', jbDelta, mathogP1, fremontGR);
+  fillCard('rs', rsDelta, mathogP2, fremontRG);
+  fillCard('gr', grDelta, fremontGR, mathogP1);
+  fillCard('rg', rgDelta, fremontRG, mathogP2);
+
+  // ── CASH EQUALIZATION ────────────────────────────────────────────────────
+  function fillEqualization(prefix, delta, partyA, partyB) {
+    // partyA gives up their current position, receives the other
+    // if delta > 0, partyA benefits → partyA pays partyB
+    // if delta < 0, partyB benefits → partyB pays partyA
+    const winner = delta > 0 ? partyA : partyB;
+    const loser  = delta > 0 ? partyB : partyA;
+    const amount = Math.abs(delta);
+    const dir    = delta > 0
+      ? `${partyA} → pays → ${partyB}`
+      : `${partyB} → pays → ${partyA}`;
+    setTxt(prefix+'_winner', winner);
+    setTxt(prefix+'_loser',  loser);
+    const advEl = document.getElementById(prefix+'_adv');
+    if (advEl) { advEl.textContent = fmt.format(amount); advEl.style.color = '#5a3e8a'; advEl.style.fontWeight='700'; }
+    const payEl = document.getElementById(prefix+'_pay');
+    if (payEl) { payEl.textContent = fmt.format(amount); payEl.style.color = '#5a3e8a'; }
+    setTxt(prefix+'_dir', dir);
+  }
+  fillEqualization('eq_jbgr', jbDelta, 'JB', 'GR');
+  fillEqualization('eq_rsrg', rsDelta, 'RS', 'RG');
+
+  // ── POST-SWAP FREMONT RESIDUAL OWNERSHIP ─────────────────────────────────
+  // Before swap: JB=1/3, RS=1/3, RG=1/3 of ft8
+  // After swap: RG exits → RS gets RG's 1/3.  Result: JB=1/3, RS=2/3, RG=0
+  const jbBefore = ft8 / 3;
+  const rsBefore = ft8 / 3;
+  const rgBefore = ft8 / 3;
+  const jbAfter  = ft8 / 3;         // JB's own residual unchanged
+  const rsAfter  = (ft8 / 3) * 2;   // RS's own 1/3 + RG's 1/3
+
+  function setOwn(id, v) {
+    const el = document.getElementById(id); if(!el)return;
+    el.textContent = v !== null && !isNaN(v) ? fmt.format(v) : '—';
+  }
+  setOwn('own_jb_before', jbBefore); setOwn('own_jb_after', jbAfter);
+  setOwn('own_rs_before', rsBefore); setOwn('own_rs_after', rsAfter);
+  setOwn('own_rg_before', rgBefore);
+  setOwn('own_total_before', ft8);   setOwn('own_total_after', ft8);
+
+  // Pro-rata: JB = 1/3 = 33.33%, RS = 2/3 = 66.67%
+  setTxt('own_jb_pct', '33.33%');
+  setTxt('own_rs_pct', '66.67%');
+  setOwn('own_jb_val', jbAfter);
+  setOwn('own_rs_val', rsAfter);
+
+  // JB buy-up to 50/50: needs to acquire 1/6 of total residual from RS
+  // Cost = ft8 × (1/6)
+  const buyup = ft8 / 6;
+  setOwn('own_jb_buyup', buyup);
+
+  // After buy-up: JB has 1/2 residual, paid 1/6 → net = 1/2 × ft8 − 1/6 × ft8 = 1/3 × ft8
+  // Wait — JB already HAS 1/3 × ft8. After paying 1/6 for the additional 1/6 share:
+  // JB's residual VALUE = 1/2 × ft8. Net of payment = 1/2 × ft8 − 1/6 × ft8 = 1/3 × ft8 (same as before)
+  // RS receives 1/6 × ft8, so RS residual net = 1/2 × ft8 + 1/6 × ft8 = 4/6 × ft8 (wait, RS gives up 1/6 share)
+  // After buy-up: RS owns 1/2 residual. RS receives cash 1/6 × ft8. Net to RS = 1/2 × ft8 + 1/6 × ft8
+  // Hmm — let's be clear: JB pays RS cash = ft8/6 to acquire 1/6 share of residual
+  // JB net = (new residual claim: 1/2 × ft8) − (cash paid: 1/6 × ft8) = 3/6 × ft8 − 1/6 × ft8 = 2/6 = 1/3 × ft8
+  // RS net = (new residual claim: 1/2 × ft8) + (cash received: 1/6 × ft8) = 3/6 + 1/6 = 4/6 × ft8
+  // Actually the cleaner way: JB started with 1/3 of residual (as a future claim). Pays cash 1/6 × ft8 today.
+  // After: JB has 1/2 future claim − 1/6 cash paid = net economic value gain of 1/6 × ft8 − 1/6 × ft8 = 0 net change (fair price)
+  // RS: gives up 1/6 future claim, receives 1/6 cash → net 0 (fair)
+  // So display: JB residual claim after = 1/2 × ft8, RS residual claim after = 1/2 × ft8
+  setOwn('own_jb_net_buyup', ft8 / 2);  // JB's residual claim = 50% of ft8
+  setOwn('own_rs_net_buyup', ft8 / 2);  // RS's residual claim = 50% of ft8
+}
+
+// ─── Boot ────────────────────────────────────────────────────────────────────
+initInputs();
+calc();
+</script>
+</body>
+</html>
