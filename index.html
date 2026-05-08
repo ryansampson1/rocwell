@@ -1,0 +1,827 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deal Waterfall Board</title>
+  <style>
+    :root {
+      --bg:     #0d1117;
+      --card:   #161b27;
+      --card2:  #1e2436;
+      --border: #2a3050;
+      --accent: #4f8ef7;
+      --teal:   #38d9a9;
+      --warn:   #ffa94d;
+      --danger: #ff6b6b;
+      --purple: #cc5de8;
+      --green:  #51cf66;
+      --text:   #e2e8f0;
+      --muted:  #8892a4;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 28px 32px;
+    }
+
+    /* ─── HEADER ─── */
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 28px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .page-title { font-size: 1.55rem; font-weight: 800; letter-spacing: -0.4px; }
+    .page-subtitle { font-size: 0.8rem; color: var(--muted); margin-top: 3px; }
+    .header-right { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; justify-content: flex-end; }
+    .hdr-field { display: flex; align-items: center; gap: 7px; }
+    .hdr-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: var(--muted); }
+    .save-badge {
+      font-size: 0.72rem;
+      color: var(--green);
+      background: rgba(81,207,102,0.12);
+      border: 1px solid rgba(81,207,102,0.3);
+      border-radius: 20px;
+      padding: 3px 10px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .save-badge.show { opacity: 1; }
+
+    /* ─── SECTION LABEL ─── */
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--muted);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ─── CARDS ─── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px 22px;
+    }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .mb { margin-bottom: 18px; }
+
+    /* ─── TABLES ─── */
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th {
+      text-align: left;
+      padding: 7px 10px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      border-bottom: 1px solid var(--border);
+    }
+    td { padding: 9px 10px; border-bottom: 1px solid rgba(42,48,80,0.6); vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    tfoot td {
+      padding: 10px 10px;
+      font-weight: 700;
+      font-size: 0.82rem;
+      border-top: 1px solid var(--border);
+      color: var(--teal);
+      background: rgba(56,217,169,0.04);
+    }
+
+    /* ─── EDITABLE INPUTS ─── */
+    .ei {
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.85rem;
+      font-family: inherit;
+      padding: 4px 7px;
+      width: 100%;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .ei:hover { border-color: var(--border); }
+    .ei:focus { outline: none; border-color: var(--accent); background: rgba(79,142,247,0.08); }
+    input[type="date"].ei { color-scheme: dark; }
+
+    /* ─── BADGES ─── */
+    .badge {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 5px;
+      font-weight: 700;
+      font-size: 0.75rem;
+      letter-spacing: 0.5px;
+    }
+    .b-gr { background: rgba(79,142,247,0.18); color: #4f8ef7; }
+    .b-rs { background: rgba(255,169,77,0.18); color: #ffa94d; }
+    .b-rg { background: rgba(81,207,102,0.18); color: #51cf66; }
+    .b-jb { background: rgba(255,107,107,0.18); color: #ff6b6b; }
+
+    /* ─── CALC CELLS ─── */
+    .cc-warn  { color: var(--warn);  font-weight: 600; }
+    .cc-teal  { color: var(--teal);  font-weight: 700; }
+    .cc-muted { color: var(--muted); font-size: 0.8rem; }
+
+    /* ─── STAT TILES ─── */
+    .stat-tile {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .st-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 5px; }
+    .st-value { font-size: 1.35rem; font-weight: 800; line-height: 1.1; }
+    .st-sub   { font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
+    .c-accent { color: var(--accent);  }
+    .c-warn   { color: var(--warn);    }
+    .c-danger { color: var(--danger);  }
+    .c-teal   { color: var(--teal);    }
+    .c-purple { color: var(--purple);  }
+    .c-green  { color: var(--green);   }
+
+    /* ─── BREAK-EVEN HERO ─── */
+    .breakeven-hero {
+      background: linear-gradient(135deg, rgba(79,142,247,0.12) 0%, rgba(56,217,169,0.08) 100%);
+      border: 1px solid rgba(79,142,247,0.28);
+      border-radius: 16px;
+      padding: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 18px;
+    }
+    .beh-left { flex: 1; }
+    .beh-tag  { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent); margin-bottom: 6px; }
+    .beh-amount { font-size: 2.6rem; font-weight: 900; color: var(--accent); line-height: 1; letter-spacing: -1px; }
+    .beh-sub  { font-size: 0.78rem; color: var(--muted); margin-top: 8px; max-width: 400px; line-height: 1.5; }
+    .beh-right { display: flex; flex-direction: column; gap: 10px; min-width: 220px; }
+
+    /* ─── BUYOUT CARD ─── */
+    .buyout-hero {
+      background: linear-gradient(135deg, rgba(81,207,102,0.1) 0%, rgba(204,93,232,0.06) 100%);
+      border: 1px solid rgba(81,207,102,0.25);
+      border-radius: 16px;
+      padding: 24px 28px;
+      margin-bottom: 18px;
+    }
+    .buyout-title { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--green); margin-bottom: 16px; }
+    .buyout-row {
+      display: flex;
+      align-items: stretch;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .buyout-party {
+      flex: 1;
+      min-width: 200px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .bp-name  { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 12px; }
+    .bp-line  { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(42,48,80,0.5); font-size: 0.82rem; }
+    .bp-line:last-of-type { border-bottom: none; }
+    .bp-line-label { color: var(--muted); }
+    .bp-line-val   { font-weight: 600; }
+    .bp-total {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .bp-total-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .bp-total-val   { font-size: 1.3rem; font-weight: 900; }
+    .buyout-combined {
+      flex: 0 0 auto;
+      min-width: 180px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 16px;
+    }
+    .bc-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--green); margin-bottom: 6px; }
+    .bc-value { font-size: 1.8rem; font-weight: 900; color: var(--green); }
+    .bc-sub   { font-size: 0.72rem; color: var(--muted); margin-top: 4px; }
+
+    /* ─── WATERFALL BARS ─── */
+    .wf-row   { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+    .wf-label { width: 160px; font-size: 0.78rem; color: var(--muted); flex-shrink: 0; }
+    .wf-track { flex: 1; background: rgba(255,255,255,0.04); border-radius: 5px; height: 26px; overflow: hidden; }
+    .wf-fill  { height: 100%; border-radius: 5px; display: flex; align-items: center; padding: 0 9px; font-size: 0.72rem; font-weight: 700; transition: width 0.5s cubic-bezier(.4,0,.2,1); white-space: nowrap; overflow: hidden; }
+    .wf-amt   { width: 120px; text-align: right; font-size: 0.8rem; font-weight: 600; flex-shrink: 0; }
+
+    /* ─── INLINE ROW ─── */
+    .ir { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid rgba(42,48,80,0.5); }
+    .ir:last-child { border-bottom: none; }
+    .ir-label { font-size: 0.82rem; color: var(--muted); }
+    .ir-val   { font-size: 0.88rem; font-weight: 600; display: flex; align-items: center; gap: 5px; }
+
+    .note { font-size: 0.72rem; color: var(--muted); font-style: italic; }
+
+    /* ─── COS HIGHLIGHT ─── */
+    .cos-deduct { color: var(--danger); }
+    .net-proceeds { color: var(--teal); font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════ HEADER ════════════ -->
+<div class="page-header">
+  <div>
+    <div class="page-title">Deal Waterfall Board</div>
+    <div class="page-subtitle">Equity Stack · Debt · Break-Even · Buyout Analysis — all values editable, auto-saved</div>
+  </div>
+  <div class="header-right">
+    <div class="hdr-field">
+      <span class="hdr-label">Sale Date</span>
+      <input type="date" id="saleDate" class="ei" style="width:148px;" title="Pref stops accruing on this date" />
+    </div>
+    <div class="hdr-field">
+      <span class="hdr-label">Cost of Sale</span>
+      <input type="text" id="costOfSale" class="ei" style="width:55px;text-align:right;" />
+      <span style="font-size:0.8rem;color:var(--muted);">%</span>
+    </div>
+    <span class="save-badge" id="saveBadge">✓ Saved</span>
+  </div>
+</div>
+
+<!-- ════════════ PREFERRED EQUITY ════════════ -->
+<div class="section-label">Preferred Equity Stack <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:0.72rem;color:var(--muted);margin-left:4px;">(accrual stops at sale date)</span></div>
+<div class="card mb">
+  <table>
+    <thead>
+      <tr>
+        <th>Investor</th>
+        <th>Principal</th>
+        <th>Investment Date</th>
+        <th>Annual Rate</th>
+        <th>Years to Sale</th>
+        <th>Accrued Interest</th>
+        <th>Total Pref Due</th>
+      </tr>
+    </thead>
+    <tbody id="prefBody"></tbody>
+    <tfoot>
+      <tr>
+        <td colspan="4" style="text-align:right;color:var(--muted);font-size:0.72rem;letter-spacing:0.5px;text-transform:uppercase;">TOTALS</td>
+        <td></td>
+        <td id="ft-accrued">—</td>
+        <td id="ft-prefdue">—</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<!-- ════════════ NO-PREF + BANK ════════════ -->
+<div class="grid-2 mb">
+  <div class="card">
+    <div class="section-label" style="margin-bottom:10px;">No-Preference Capital</div>
+    <table>
+      <thead><tr><th>Investor</th><th>Amount Invested</th><th>Preference</th></tr></thead>
+      <tbody id="noprefBody"></tbody>
+      <tfoot><tr><td>TOTAL</td><td id="ft-nopref">—</td><td></td></tr></tfoot>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="section-label" style="margin-bottom:12px;">Bank Debt</div>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:6px;">Outstanding Loan Balance</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="color:var(--muted);font-size:1.1rem;">$</span>
+        <input id="bankDebt" type="text" class="ei" style="font-size:1.5rem;font-weight:800;width:210px;color:var(--danger);" />
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:14px;">
+      <div class="ir"><span class="ir-label">Total Pref Due</span><span class="ir-val c-teal" id="d-prefdue">—</span></div>
+      <div class="ir"><span class="ir-label">Total No-Pref Capital</span><span class="ir-val c-purple" id="d-nopref">—</span></div>
+      <div class="ir"><span class="ir-label">Bank Debt</span><span class="ir-val c-danger" id="d-debt">—</span></div>
+      <div class="ir" style="border-top:1px solid var(--border);margin-top:4px;padding-top:12px;">
+        <span class="ir-label" style="font-weight:700;color:var(--text);">Total Obligations</span>
+        <span class="ir-val" style="font-size:1.05rem;font-weight:800;" id="d-totalOblig">—</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ PROPERTY ASSETS ════════════ -->
+<div class="section-label">Property Assets</div>
+<div class="grid-2 mb">
+
+  <!-- Building -->
+  <div class="card">
+    <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:12px;">🏢 Leased Building (NNN)</div>
+    <div class="ir">
+      <span class="ir-label">Annual Net Rent</span>
+      <div class="ir-val">
+        <span style="color:var(--muted);">$</span>
+        <input id="annualRent" type="text" class="ei" style="width:120px;" />
+        <span style="color:var(--muted);font-size:0.78rem;">/yr</span>
+      </div>
+    </div>
+    <div class="ir">
+      <span class="ir-label">Cap Rate</span>
+      <div class="ir-val">
+        <input id="capRate" type="text" class="ei" style="width:70px;" />
+        <span style="color:var(--muted);">%</span>
+      </div>
+    </div>
+    <div class="ir">
+      <span class="ir-label">Gross Building Value</span>
+      <span class="ir-val" id="d-buildingGross">—</span>
+    </div>
+    <div class="ir">
+      <span class="ir-label cos-deduct">Cost of Sale (<span id="d-cos-pct-b">2</span>%)</span>
+      <span class="ir-val cos-deduct" id="d-buildingCOS">—</span>
+    </div>
+    <div class="ir" style="border-top:1px solid var(--border);margin-top:4px;padding-top:10px;">
+      <span class="ir-label" style="font-weight:700;color:var(--text);">Net Building Proceeds</span>
+      <span class="ir-val net-proceeds" style="font-size:1.05rem;" id="d-buildingNet">—</span>
+    </div>
+    <div style="margin-top:10px;padding:8px 10px;background:rgba(56,217,169,0.06);border-radius:8px;border:1px solid rgba(56,217,169,0.12);">
+      <span class="note">Gross = Annual Rent ÷ Cap Rate · Net = Gross × (1 − COS%)</span>
+    </div>
+  </div>
+
+  <!-- Land -->
+  <div class="card">
+    <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-bottom:12px;">🌿 Vacant Land Parcel</div>
+    <div class="ir">
+      <span class="ir-label">Gross Land Sale Price</span>
+      <div class="ir-val">
+        <span style="color:var(--muted);">$</span>
+        <input id="landPrice" type="text" class="ei" style="width:140px;" placeholder="Enter price…" />
+      </div>
+    </div>
+    <div class="ir">
+      <span class="ir-label cos-deduct">Cost of Sale (<span id="d-cos-pct-l">2</span>%)</span>
+      <span class="ir-val cos-deduct" id="d-landCOS">—</span>
+    </div>
+    <div class="ir">
+      <span class="ir-label">Net Land Proceeds</span>
+      <span class="ir-val net-proceeds" id="d-landNet">—</span>
+    </div>
+    <div class="ir">
+      <span class="ir-label">Total Net Proceeds</span>
+      <span class="ir-val" id="d-totalAssets">—</span>
+    </div>
+    <div class="ir" style="border-top:1px solid var(--border);margin-top:4px;padding-top:10px;">
+      <span class="ir-label" style="font-weight:700;color:var(--text);">Surplus / (Deficit)</span>
+      <span class="ir-val" style="font-size:1.05rem;" id="d-surplus">—</span>
+    </div>
+    <div style="margin-top:10px;padding:8px 10px;background:rgba(79,142,247,0.06);border-radius:8px;border:1px solid rgba(79,142,247,0.12);">
+      <span class="note">Enter a land price above to test scenarios against total obligations</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ BREAK-EVEN HERO ════════════ -->
+<div class="section-label">Break-Even Analysis</div>
+<div class="breakeven-hero">
+  <div class="beh-left">
+    <div class="beh-tag">Gross Land Price Needed to Break Even</div>
+    <div class="beh-amount" id="be-amount">$—</div>
+    <div style="font-size:0.72rem;color:var(--accent);margin-top:4px;" id="be-amount-net"></div>
+    <div class="beh-sub">
+      Net building proceeds + net land proceeds = total obligations (all pref equity + no-pref capital + bank debt).
+      Pref accrual stops on the sale date. Cost of sale applied to both assets.
+    </div>
+  </div>
+  <div class="beh-right">
+    <div class="stat-tile">
+      <div class="st-label">Net Building Proceeds</div>
+      <div class="st-value c-teal" id="be-buildnet">—</div>
+      <div class="st-sub" id="be-buildcalc">—</div>
+    </div>
+    <div class="stat-tile">
+      <div class="st-label">Total Obligations</div>
+      <div class="st-value c-warn" id="be-totaloblig">—</div>
+      <div class="st-sub">Pref + No-Pref + Bank</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ CHIPS ════════════ -->
+<div class="grid-3 mb">
+  <div class="stat-tile">
+    <div class="st-label">Pref Equity Total Due</div>
+    <div class="st-value c-teal" id="chip-pref">—</div>
+    <div class="st-sub" id="chip-pref-sub">—</div>
+  </div>
+  <div class="stat-tile">
+    <div class="st-label">No-Pref Capital Total</div>
+    <div class="st-value c-purple" id="chip-nopref">—</div>
+    <div class="st-sub">Return of capital only</div>
+  </div>
+  <div class="stat-tile">
+    <div class="st-label">Bank Payoff</div>
+    <div class="st-value c-danger" id="chip-debt">—</div>
+    <div class="st-sub">Outstanding balance</div>
+  </div>
+</div>
+
+<!-- ════════════ RG BUYOUT ANALYSIS ════════════ -->
+<div class="section-label">RG Buyout Analysis <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:0.72rem;color:var(--muted);margin-left:4px;">What RG pays to acquire RS's and JB's full position</span></div>
+<div class="buyout-hero mb">
+  <div class="buyout-title">RG → Buyout Cost per Partner (as of Sale Date)</div>
+  <div class="buyout-row">
+
+    <!-- RS Buyout -->
+    <div class="buyout-party">
+      <div class="bp-name">RS <span style="color:var(--muted);font-weight:400;">(pref + no-pref investor)</span></div>
+      <div class="bp-line">
+        <span class="bp-line-label">RS Pref Principal</span>
+        <span class="bp-line-val" id="bo-rs-principal">—</span>
+      </div>
+      <div class="bp-line">
+        <span class="bp-line-label">RS Pref Accrued Interest</span>
+        <span class="bp-line-val cc-warn" id="bo-rs-accrued">—</span>
+      </div>
+      <div class="bp-line">
+        <span class="bp-line-label">RS No-Pref Capital</span>
+        <span class="bp-line-val" id="bo-rs-nopref">—</span>
+      </div>
+      <div class="bp-total" style="background:rgba(255,169,77,0.1);border:1px solid rgba(255,169,77,0.25);">
+        <span class="bp-total-label" style="color:var(--warn);">RG Pays RS</span>
+        <span class="bp-total-val" style="color:var(--warn);" id="bo-rs-total">—</span>
+      </div>
+    </div>
+
+    <!-- JB Buyout -->
+    <div class="buyout-party">
+      <div class="bp-name">JB <span style="color:var(--muted);font-weight:400;">(no-pref investor only)</span></div>
+      <div class="bp-line">
+        <span class="bp-line-label">JB Pref Equity</span>
+        <span class="bp-line-val" style="color:var(--muted);">None</span>
+      </div>
+      <div class="bp-line">
+        <span class="bp-line-label">JB No-Pref Capital</span>
+        <span class="bp-line-val" id="bo-jb-nopref">—</span>
+      </div>
+      <div style="height:1px;background:var(--border);margin:8px 0;"></div>
+      <div class="bp-total" style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.25);margin-top:4px;">
+        <span class="bp-total-label" style="color:var(--danger);">RG Pays JB</span>
+        <span class="bp-total-val" style="color:var(--danger);" id="bo-jb-total">—</span>
+      </div>
+    </div>
+
+    <!-- Combined -->
+    <div class="buyout-combined">
+      <div class="bc-label">Total RG Outlay</div>
+      <div class="bc-value" id="bo-total">—</div>
+      <div class="bc-sub">to acquire full RS + JB positions</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ════════════ WATERFALL BARS ════════════ -->
+<div class="section-label">Capital Stack Visual</div>
+<div class="card mb">
+  <div id="wfBars"></div>
+  <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:flex-end;gap:16px;" id="wfLegend"></div>
+</div>
+
+<!-- ════════════ NOTES ════════════ -->
+<div class="card" style="margin-bottom:8px;">
+  <div class="section-label" style="margin-bottom:10px;">Notes / Deal Memo</div>
+  <textarea id="dealNotes" class="ei" style="width:100%;min-height:80px;resize:vertical;line-height:1.5;font-size:0.83rem;" placeholder="Add deal notes, memos, or assumptions here…"></textarea>
+</div>
+<div style="font-size:0.7rem;color:var(--muted);text-align:center;padding-bottom:16px;">
+  All changes auto-saved to your browser · Last saved: <span id="lastSavedTime">—</span>
+</div>
+
+<script>
+// ── STORAGE KEY (v3 — new fields added) ──────────────────────────────────────
+const SK = 'dealWaterfall_v3';
+
+const DEFAULTS = {
+  saleDate:   '2026-06-01',
+  costOfSale: 2,
+  prefInvestors: [
+    { id:'GR', principal: 303000, date:'2022-09-13', rate: 10 },
+    { id:'RS', principal: 275000, date:'2022-09-13', rate: 10 },
+    { id:'RG', principal: 300000, date:'2022-09-13', rate: 10 },
+  ],
+  noPrefInvestors: [
+    { id:'JB', amount: 501429 },
+    { id:'RS', amount: 498429 },
+    { id:'RG', amount: 498429 },
+  ],
+  bankDebt:   3968714,
+  annualRent:  215000,
+  capRate:       5.75,
+  landPrice:      '',
+  dealNotes:      '',
+};
+
+// Try to migrate v2 state; fall back to defaults
+let state = (() => {
+  try {
+    const v3 = localStorage.getItem(SK);
+    if (v3) return JSON.parse(v3);
+    // Migrate from v2 if present
+    const v2 = localStorage.getItem('dealWaterfall_v2');
+    if (v2) {
+      const old = JSON.parse(v2);
+      return Object.assign(JSON.parse(JSON.stringify(DEFAULTS)), {
+        prefInvestors:  old.prefInvestors  || DEFAULTS.prefInvestors,
+        noPrefInvestors: old.noPrefInvestors || DEFAULTS.noPrefInvestors,
+        bankDebt:   old.bankDebt   ?? DEFAULTS.bankDebt,
+        annualRent: old.annualRent ?? DEFAULTS.annualRent,
+        capRate:    old.capRate    ?? DEFAULTS.capRate,
+        landPrice:  old.landPrice  ?? DEFAULTS.landPrice,
+        dealNotes:  old.dealNotes  ?? DEFAULTS.dealNotes,
+      });
+    }
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(DEFAULTS));
+})();
+
+// ── SAVE ──────────────────────────────────────────────────────────────────────
+let saveTimer = null;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    localStorage.setItem(SK, JSON.stringify(state));
+    const badge = document.getElementById('saveBadge');
+    badge.classList.add('show');
+    clearTimeout(badge._t);
+    badge._t = setTimeout(() => badge.classList.remove('show'), 2200);
+    document.getElementById('lastSavedTime').textContent = new Date().toLocaleTimeString();
+  }, 400);
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function parseMoney(v) {
+  if (v === '' || v == null) return 0;
+  return parseFloat(String(v).replace(/[$,]/g,'')) || 0;
+}
+function fmt(n, dec = 0) {
+  if (n == null || isNaN(n)) return '—';
+  const s = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+  return (n < 0 ? '−$' : '$') + s;
+}
+function fmtNum(n) { return n.toLocaleString('en-US'); }
+function yearsBetween(d1, d2) {
+  return Math.max(0, (new Date(d2) - new Date(d1)) / (1000 * 60 * 60 * 24 * 365.25));
+}
+function badgeClass(id) {
+  return { GR:'b-gr', RS:'b-rs', RG:'b-rg', JB:'b-jb' }[id] || 'b-gr';
+}
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+// ── TABLE BUILD (once on init) ────────────────────────────────────────────────
+function buildTables() {
+  document.getElementById('prefBody').innerHTML = state.prefInvestors.map((inv, i) => `
+    <tr>
+      <td><span class="badge ${badgeClass(inv.id)}">${inv.id}</span></td>
+      <td><div style="display:flex;align-items:center;gap:4px;"><span style="color:var(--muted);">$</span><input id="pp_${i}" type="text" class="ei" value="${fmtNum(inv.principal)}" style="width:110px;" /></div></td>
+      <td><input id="pd_${i}" type="date" class="ei" value="${inv.date}" style="width:148px;" /></td>
+      <td><div style="display:flex;align-items:center;gap:4px;"><input id="pr_${i}" type="text" class="ei" value="${inv.rate}" style="width:55px;" /><span style="color:var(--muted);">%</span></div></td>
+      <td class="cc-muted" id="py_${i}">—</td>
+      <td class="cc-warn"  id="pa_${i}">—</td>
+      <td class="cc-teal"  id="pt_${i}">—</td>
+    </tr>
+  `).join('');
+
+  document.getElementById('noprefBody').innerHTML = state.noPrefInvestors.map((inv, i) => `
+    <tr>
+      <td><span class="badge ${badgeClass(inv.id)}">${inv.id}</span></td>
+      <td><div style="display:flex;align-items:center;gap:4px;"><span style="color:var(--muted);">$</span><input id="np_${i}" type="text" class="ei" value="${fmtNum(inv.amount)}" style="width:115px;" /></div></td>
+      <td style="color:var(--muted);font-size:0.78rem;">No pref / return of capital</td>
+    </tr>
+  `).join('');
+}
+
+// ── RECALC ────────────────────────────────────────────────────────────────────
+function recalc() {
+  const saleDate  = state.saleDate;
+  const cos       = (state.costOfSale || 0) / 100;        // e.g. 0.02
+  const cosLabel  = (state.costOfSale || 0).toString();
+
+  // ── Pref equity (accrues to sale date) ──
+  let totAccrued = 0, totPrefDue = 0;
+  const prefByInvestor = {};
+
+  state.prefInvestors.forEach((inv, i) => {
+    const yrs     = yearsBetween(inv.date, saleDate);
+    const accrued = inv.principal * (inv.rate / 100) * yrs;
+    const due     = inv.principal + accrued;
+    totAccrued += accrued;
+    totPrefDue += due;
+    prefByInvestor[inv.id] = (prefByInvestor[inv.id] || 0) + due;
+
+    setText(`py_${i}`, yrs.toFixed(2) + ' yrs');
+    setText(`pa_${i}`, fmt(accrued));
+    setText(`pt_${i}`, fmt(due));
+  });
+  setText('ft-accrued', fmt(totAccrued));
+  setText('ft-prefdue', fmt(totPrefDue));
+
+  // ── No-pref ──
+  let totNoPref = 0;
+  const noprefByInvestor = {};
+  state.noPrefInvestors.forEach(inv => {
+    totNoPref += inv.amount;
+    noprefByInvestor[inv.id] = (noprefByInvestor[inv.id] || 0) + inv.amount;
+  });
+  setText('ft-nopref', fmt(totNoPref));
+
+  // ── Bank + obligations ──
+  const debt       = state.bankDebt;
+  const totalOblig = totPrefDue + totNoPref + debt;
+  setText('d-prefdue',    fmt(totPrefDue));
+  setText('d-nopref',     fmt(totNoPref));
+  setText('d-debt',       fmt(debt));
+  setText('d-totalOblig', fmt(totalOblig));
+
+  // ── Property & COS ──
+  const rent        = state.annualRent;
+  const cap         = (state.capRate || 5.75) / 100;
+  const buildGross  = cap > 0 ? rent / cap : 0;
+  const buildCOS    = buildGross * cos;
+  const buildNet    = buildGross - buildCOS;
+
+  const landGross   = parseMoney(state.landPrice);
+  const landCOS     = landGross * cos;
+  const landNet     = landGross - landCOS;
+  const hasLand     = state.landPrice !== '';
+
+  // Update COS % labels
+  document.querySelectorAll('[id^="d-cos-pct"]').forEach(el => el.textContent = cosLabel);
+
+  setText('d-buildingGross', fmt(buildGross));
+  setText('d-buildingCOS',   hasLand || true ? '−' + fmt(buildCOS) : '—');
+  setText('d-buildingNet',   fmt(buildNet));
+
+  if (hasLand) {
+    setText('d-landCOS', '−' + fmt(landCOS));
+    setText('d-landNet',  fmt(landNet));
+    const totalNet = buildNet + landNet;
+    setText('d-totalAssets', fmt(totalNet));
+    const surplus = totalNet - totalOblig;
+    const surplusEl = document.getElementById('d-surplus');
+    surplusEl.textContent = (surplus >= 0 ? '+' : '') + fmt(surplus);
+    surplusEl.style.color = surplus >= 0 ? 'var(--green)' : 'var(--danger)';
+  } else {
+    setText('d-landCOS',    '—');
+    setText('d-landNet',    '—');
+    setText('d-totalAssets','—');
+    const surplusEl = document.getElementById('d-surplus');
+    surplusEl.textContent = '—';
+    surplusEl.style.color = '';
+  }
+
+  // ── Break-even (gross land price needed so net proceeds = total obligations) ──
+  // buildNet + landGross*(1-cos) = totalOblig
+  // landGross = (totalOblig - buildNet) / (1 - cos)
+  const beGross = cos < 1 ? (totalOblig - buildNet) / (1 - cos) : 0;
+  const beNet   = beGross * (1 - cos);
+  setText('be-amount',   fmt(beGross));
+  setText('be-amount-net', `Net after ${cosLabel}% COS = ${fmt(beNet)}`);
+  setText('be-buildnet',  fmt(buildNet));
+  setText('be-buildcalc', fmt(rent) + ' / ' + state.capRate + '% cap − ' + cosLabel + '% COS');
+  setText('be-totaloblig', fmt(totalOblig));
+
+  // ── Chips ──
+  setText('chip-pref',     fmt(totPrefDue));
+  setText('chip-pref-sub', fmt(totAccrued) + ' accrued interest');
+  setText('chip-nopref',   fmt(totNoPref));
+  setText('chip-debt',     fmt(debt));
+
+  // ── RG Buyout ──
+  // RS: pref due (RS as pref investor) + RS no-pref capital
+  const rsPrefInv = state.prefInvestors.find(p => p.id === 'RS');
+  let rsPrefDue = 0;
+  let rsPrefAccrued = 0;
+  let rsPrefPrincipal = 0;
+  if (rsPrefInv) {
+    const yrs = yearsBetween(rsPrefInv.date, saleDate);
+    rsPrefAccrued   = rsPrefInv.principal * (rsPrefInv.rate / 100) * yrs;
+    rsPrefDue       = rsPrefInv.principal + rsPrefAccrued;
+    rsPrefPrincipal = rsPrefInv.principal;
+  }
+  const rsNoPref = noprefByInvestor['RS'] || 0;
+  const rsTotal  = rsPrefDue + rsNoPref;
+
+  // JB: no-pref only
+  const jbNoPref = noprefByInvestor['JB'] || 0;
+  const jbTotal  = jbNoPref;
+
+  setText('bo-rs-principal', fmt(rsPrefPrincipal));
+  setText('bo-rs-accrued',   fmt(rsPrefAccrued));
+  setText('bo-rs-nopref',    fmt(rsNoPref));
+  setText('bo-rs-total',     fmt(rsTotal));
+  setText('bo-jb-nopref',    fmt(jbNoPref));
+  setText('bo-jb-total',     fmt(jbTotal));
+  setText('bo-total',        fmt(rsTotal + jbTotal));
+
+  // ── Waterfall bars ──
+  renderBars(totPrefDue, totNoPref, debt, totalOblig, buildNet, Math.max(0, beGross));
+}
+
+// ── BARS ──────────────────────────────────────────────────────────────────────
+function renderBars(pref, noPref, debt, totalOblig, buildNet, beGross) {
+  const segments = [
+    { label: 'Net Building Proceeds', value: buildNet,               color: '#38d9a9', bg: 'rgba(56,217,169,0.15)'  },
+    { label: 'Land (Break-Even Gross)', value: beGross,              color: '#4f8ef7', bg: 'rgba(79,142,247,0.15)'  },
+    { label: 'Pref Equity Due',        value: pref,                  color: '#ffa94d', bg: 'rgba(255,169,77,0.15)'  },
+    { label: 'No-Pref Capital',        value: noPref,                color: '#cc5de8', bg: 'rgba(204,93,232,0.15)'  },
+    { label: 'Bank Debt',              value: debt,                  color: '#ff6b6b', bg: 'rgba(255,107,107,0.15)' },
+  ];
+  const max = Math.max(...segments.map(s => s.value), 1);
+
+  document.getElementById('wfBars').innerHTML = segments.map(s => {
+    const pct = Math.min(100, (s.value / max) * 100);
+    return `
+      <div class="wf-row">
+        <div class="wf-label">${s.label}</div>
+        <div class="wf-track">
+          <div class="wf-fill" style="width:${pct}%;background:${s.bg};border-left:3px solid ${s.color};color:${s.color};">
+            ${pct > 12 ? fmt(s.value) : ''}
+          </div>
+        </div>
+        <div class="wf-amt" style="color:${s.color};">${fmt(s.value)}</div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('wfLegend').innerHTML = segments.map(s =>
+    `<span style="font-size:0.72rem;color:${s.color};display:flex;align-items:center;gap:4px;">
+      <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${s.color};"></span>${s.label}
+    </span>`
+  ).join('');
+}
+
+// ── INPUT HANDLER ─────────────────────────────────────────────────────────────
+document.addEventListener('input', e => {
+  const el  = e.target;
+  const id  = el.id;
+  const raw = el.value.replace(/[$,]/g, '');
+
+  const pm = id.match(/^pp_(\d+)$/);
+  const dm = id.match(/^pd_(\d+)$/);
+  const rm = id.match(/^pr_(\d+)$/);
+  if (pm) state.prefInvestors[+pm[1]].principal = parseMoney(raw);
+  else if (dm) state.prefInvestors[+dm[1]].date = el.value;
+  else if (rm) state.prefInvestors[+rm[1]].rate = parseFloat(raw) || 0;
+
+  const nm = id.match(/^np_(\d+)$/);
+  if (nm) state.noPrefInvestors[+nm[1]].amount = parseMoney(raw);
+
+  if (id === 'saleDate')   state.saleDate    = el.value;
+  if (id === 'costOfSale') state.costOfSale  = parseFloat(raw) || 0;
+  if (id === 'bankDebt')   state.bankDebt    = parseMoney(raw);
+  if (id === 'annualRent') state.annualRent  = parseMoney(raw);
+  if (id === 'capRate')    state.capRate     = parseFloat(raw) || 0;
+  if (id === 'landPrice')  state.landPrice   = el.value === '' ? '' : raw;
+  if (id === 'dealNotes')  state.dealNotes   = el.value;
+
+  scheduleSave();
+  recalc();
+});
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+document.getElementById('saleDate').value   = state.saleDate;
+document.getElementById('costOfSale').value = state.costOfSale;
+document.getElementById('bankDebt').value   = fmtNum(state.bankDebt);
+document.getElementById('annualRent').value = fmtNum(state.annualRent);
+document.getElementById('capRate').value    = state.capRate;
+document.getElementById('landPrice').value  = state.landPrice;
+document.getElementById('dealNotes').value  = state.dealNotes;
+
+buildTables();
+recalc();
+</script>
+</body>
+</html>
