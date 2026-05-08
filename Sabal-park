@@ -1,0 +1,1152 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Sabal Park — Development Budget Board</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --panel: #ffffff;
+    --ink: #1a1f2b;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --accent: #1e3a8a;
+    --accent-soft: #eef2ff;
+    --good: #047857;
+    --warn: #b45309;
+    --danger: #b91c1c;
+    --hover: #f3f4f6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 13px;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
+
+  header.top {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin-bottom: 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  header.top h1 { margin: 0 0 4px 0; font-size: 20px; color: var(--accent); }
+  header.top .sub { color: var(--muted); font-size: 12px; }
+  .save-indicator {
+    font-size: 11px;
+    color: var(--good);
+    padding: 4px 10px;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .save-indicator.saving { color: var(--warn); background: #fffbeb; border-color: #fde68a; }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+  @media (max-width: 1100px) { .grid-3 { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 900px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .panel h2 {
+    margin: 0 0 12px 0;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 8px;
+  }
+
+  /* assumption rows */
+  .assump-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .assump-row:last-child { border-bottom: none; }
+  .assump-row label { color: var(--muted); font-size: 12px; }
+  .assump-row input {
+    text-align: right;
+    width: 130px;
+    padding: 4px 8px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    font: inherit;
+    background: var(--panel);
+  }
+  .assump-row input:focus { outline: none; border-color: var(--accent); background: var(--accent-soft); }
+  .assump-row .computed {
+    text-align: right;
+    color: var(--ink);
+    font-weight: 600;
+    padding-right: 8px;
+  }
+
+  /* budget table */
+  .budget-panel { padding: 0; overflow: hidden; }
+  .budget-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .budget-header h2 { margin: 0; border: none; padding: 0; }
+  .btn {
+    font: inherit;
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .btn:hover { background: var(--hover); }
+  .btn.primary { background: var(--accent); color: white; border-color: var(--accent); }
+  .btn.primary:hover { background: #172554; }
+  .btn.small { padding: 3px 8px; font-size: 11px; }
+  .btn.danger { color: var(--danger); border-color: #fecaca; }
+  .btn.danger:hover { background: #fee2e2; }
+
+  table.budget {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  table.budget th {
+    text-align: left;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    padding: 10px 12px;
+    background: #fafbfc;
+    border-bottom: 1px solid var(--line);
+    position: sticky;
+    top: 0;
+  }
+  table.budget td {
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: middle;
+  }
+  table.budget tr.category-row td {
+    background: var(--accent-soft);
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 11px;
+    padding: 8px 12px;
+  }
+  table.budget tr.category-row .cat-total {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  table.budget tr.add-row td {
+    padding: 6px 12px;
+    background: #fafbfc;
+  }
+
+  /* editable inputs in table */
+  table.budget input {
+    font: inherit;
+    border: 1px solid transparent;
+    background: transparent;
+    padding: 4px 6px;
+    border-radius: 4px;
+    width: 100%;
+  }
+  table.budget input:hover { border-color: var(--line); background: white; }
+  table.budget input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  table.budget input.qty, table.budget input.unit, table.budget input.unit-cost {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  table.budget input.unit { text-align: center; width: 60px; }
+  table.budget td.total {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  table.budget td.total.auto {
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  /* column widths */
+  .col-desc { width: 42%; }
+  .col-qty { width: 90px; }
+  .col-unit { width: 70px; }
+  .col-unit-cost { width: 120px; }
+  .col-total { width: 140px; }
+  .col-action { width: 50px; text-align: center; }
+
+  /* summary */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 18px;
+  }
+  @media (max-width: 900px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  .returns-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 12px;
+  }
+  @media (max-width: 900px) { .returns-grid { grid-template-columns: repeat(2, 1fr); } }
+
+  .section-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin: 22px 0 8px 2px;
+    font-weight: 600;
+  }
+
+  .metric-good { color: var(--good); }
+  .metric-warn { color: var(--warn); }
+  .metric-bad { color: var(--danger); }
+
+  .summary-card .sub-val {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .summary-card.accent .sub-val { color: rgba(255,255,255,0.75); }
+  .summary-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .summary-card .label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+  }
+  .summary-card .value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .summary-card.accent { background: var(--accent); border-color: var(--accent); }
+  .summary-card.accent .label, .summary-card.accent .value { color: white; }
+
+  .notes {
+    margin-top: 18px;
+    padding: 14px 18px;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 10px;
+    color: #78350f;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .actions-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+
+  /* row delete button */
+  .row-del {
+    color: var(--danger);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    opacity: 0.4;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  tr:hover .row-del { opacity: 1; }
+  .row-del:hover { background: #fee2e2; }
+
+  /* commission auto row */
+  .auto-badge {
+    display: inline-block;
+    font-size: 9px;
+    padding: 1px 5px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-radius: 3px;
+    margin-left: 6px;
+    vertical-align: middle;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <h1>Sabal Park — Development Budget Board</h1>
+      <div class="sub">3,600 SF Retail Strip Center · 3 tenants @ 1,200 SF · E MLK Jr. Blvd & Cragmont Dr, Tampa</div>
+    </div>
+    <div class="save-indicator" id="saveInd">Saved</div>
+  </header>
+
+  <div class="actions-bar">
+    <button class="btn" id="addCategoryBtn">+ Add Category</button>
+    <button class="btn" id="resetBtn">Reset to Default</button>
+    <button class="btn" id="exportBtn">Export CSV</button>
+  </div>
+
+  <div class="grid-3">
+    <div class="panel">
+      <h2>Project Assumptions</h2>
+      <div class="assump-row">
+        <label>Building Size (SF)</label>
+        <input type="number" id="bldgSF" />
+      </div>
+      <div class="assump-row">
+        <label>Number of Tenants</label>
+        <input type="number" id="numTenants" />
+      </div>
+      <div class="assump-row">
+        <label>Avg SF / Tenant</label>
+        <div class="computed" id="sfPerTenant">—</div>
+      </div>
+      <div class="assump-row">
+        <label>Base Rent ($/SF/yr, Year 1)</label>
+        <input type="number" id="baseRent" step="0.25" />
+      </div>
+      <div class="assump-row">
+        <label>Annual Rent Escalation (%)</label>
+        <input type="number" id="escalation" step="0.1" />
+      </div>
+      <div class="assump-row">
+        <label>Commission Rate (%)</label>
+        <input type="number" id="commRate" step="0.25" />
+      </div>
+      <div class="assump-row">
+        <label>Construction Period (months)</label>
+        <input type="number" id="constrMonths" />
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>NOI & Operating</h2>
+      <div class="assump-row">
+        <label>Year 1 Gross Rent (all tenants)</label>
+        <div class="computed" id="y1Rent">—</div>
+      </div>
+      <div class="assump-row">
+        <label>10-Year Base Rent (cumulative)</label>
+        <div class="computed" id="tenYrRent">—</div>
+      </div>
+      <div class="assump-row">
+        <label>Leasing Commission (auto)</label>
+        <div class="computed" id="commCalc">—</div>
+      </div>
+      <div class="assump-row">
+        <label>Vacancy / Collection Loss (%)</label>
+        <input type="number" id="vacancy" step="0.25" />
+      </div>
+      <div class="assump-row">
+        <label>Management Fee (% of EGI)</label>
+        <input type="number" id="mgmtFee" step="0.25" />
+      </div>
+      <div class="assump-row">
+        <label>Replacement Reserves ($/SF)</label>
+        <input type="number" id="reserves" step="0.05" />
+      </div>
+      <div class="assump-row">
+        <label><strong>Stabilized NOI (Year 1)</strong></label>
+        <div class="computed" id="noi">—</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Debt & Exit</h2>
+      <div class="assump-row">
+        <label>Loan Amount</label>
+        <input type="number" id="loanAmt" />
+      </div>
+      <div class="assump-row">
+        <label>Interest Rate (%)</label>
+        <input type="number" id="intRate" step="0.125" />
+      </div>
+      <div class="assump-row">
+        <label>Amortization (years)</label>
+        <input type="number" id="amort" />
+      </div>
+      <div class="assump-row">
+        <label>Annual Debt Service</label>
+        <div class="computed" id="debtSvc">—</div>
+      </div>
+      <div class="assump-row">
+        <label>Exit Cap Rate (%)</label>
+        <input type="number" id="exitCap" step="0.05" />
+      </div>
+      <div class="assump-row">
+        <label>Cost of Sale (%)</label>
+        <input type="number" id="costSale" step="0.25" />
+      </div>
+      <div class="assump-row">
+        <label>Equity Required</label>
+        <div class="computed" id="equityReq">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel budget-panel">
+    <div class="budget-header">
+      <h2>Development Budget — Line Items</h2>
+      <div style="color: var(--muted); font-size: 11px;">Click any cell to edit · All changes auto-save</div>
+    </div>
+    <table class="budget" id="budgetTable">
+      <thead>
+        <tr>
+          <th class="col-desc">Description</th>
+          <th class="col-qty" style="text-align:right;">Qty</th>
+          <th class="col-unit" style="text-align:center;">Unit</th>
+          <th class="col-unit-cost" style="text-align:right;">Unit Cost</th>
+          <th class="col-total" style="text-align:right;">Total</th>
+          <th class="col-action"></th>
+        </tr>
+      </thead>
+      <tbody id="budgetBody"></tbody>
+    </table>
+  </div>
+
+  <div class="section-title">Cost Summary</div>
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="label">Hard Costs</div>
+      <div class="value" id="hardTotal">—</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Soft Costs</div>
+      <div class="value" id="softTotal">—</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Total Project Cost / SF</div>
+      <div class="value" id="costPSF">—</div>
+    </div>
+    <div class="summary-card accent">
+      <div class="label">Total Development Cost</div>
+      <div class="value" id="grandTotal">—</div>
+    </div>
+  </div>
+
+  <div class="section-title">Returns & Debt Metrics</div>
+  <div class="returns-grid">
+    <div class="summary-card">
+      <div class="label">Return on Cost (Yield)</div>
+      <div class="value" id="roc">—</div>
+      <div class="sub-val" id="rocSub">NOI ÷ Total Dev Cost</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">DSCR</div>
+      <div class="value" id="dscr">—</div>
+      <div class="sub-val" id="dscrSub">NOI ÷ Annual Debt Service</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Loan to Cost (LTC)</div>
+      <div class="value" id="ltc">—</div>
+      <div class="sub-val" id="ltcSub">Loan ÷ Total Dev Cost</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Loan to Value (LTV)</div>
+      <div class="value" id="ltv">—</div>
+      <div class="sub-val" id="ltvSub">Loan ÷ As-Complete Value</div>
+    </div>
+  </div>
+
+  <div class="section-title">Exit / Sale Analysis</div>
+  <div class="returns-grid">
+    <div class="summary-card">
+      <div class="label">As-Complete Value (Sale Price)</div>
+      <div class="value" id="salePrice">—</div>
+      <div class="sub-val" id="salePriceSub">NOI ÷ Exit Cap</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Cost of Sale</div>
+      <div class="value" id="costOfSaleVal">—</div>
+      <div class="sub-val" id="costOfSaleSub">% of Sale Price</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Net Sale Proceeds</div>
+      <div class="value" id="netSale">—</div>
+      <div class="sub-val" id="netSaleSub">Sale − Cost of Sale</div>
+    </div>
+    <div class="summary-card accent">
+      <div class="label">Development Profit</div>
+      <div class="value" id="profit">—</div>
+      <div class="sub-val" id="profitSub">Margin %</div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <strong>Notes:</strong> Hard costs based on Leonard Contractors budget dated Apr 8, 2026. Leasing commission auto-calculates as Commission Rate × 10-Year Base Rent (with annual escalations compounded). Loan defaults mirror the Valley Bank term sheet: $1,590,000, 25-yr am, 5.75% (T5+250bps stabilized floor, yrs 3–7). NOI = Gross Rent − Vacancy − Management Fee − Replacement Reserves. Color coding: <span class="metric-good">green</span> = meets target, <span class="metric-warn">amber</span> = close, <span class="metric-bad">red</span> = miss. DSCR target ≥1.25x (Valley covenant), LTC ≤75%, LTV ≤70%, ROC ≥8%.
+  </div>
+
+</div>
+
+<script>
+/* ============================================================
+   DEFAULT BUDGET (categories + items)
+   ============================================================ */
+const DEFAULT_DATA = {
+  assumptions: {
+    bldgSF: 3600,
+    numTenants: 3,
+    baseRent: 40,
+    escalation: 3,
+    commRate: 6,
+    constrMonths: 14,
+    loanAmt: 1590000,
+    vacancy: 5,
+    mgmtFee: 3,
+    reserves: 0.20,
+    intRate: 5.75,
+    amort: 25,
+    exitCap: 6.50,
+    costSale: 2.0
+  },
+  categories: [
+    {
+      id: "land",
+      name: "Land Acquisition",
+      items: [
+        { desc: "Land (3,600 SF pad-ready remnant parcel)", qty: 1, unit: "LS", unitCost: 500000 },
+        { desc: "Title insurance (owner's policy)", qty: 1, unit: "LS", unitCost: 4500 },
+        { desc: "Acquisition closing costs", qty: 1, unit: "LS", unitCost: 3500 }
+      ]
+    },
+    {
+      id: "hard",
+      name: "Hard Costs — Construction",
+      items: [
+        { desc: "General Requirements / Conditions", qty: 1, unit: "LS", unitCost: 112775.20 },
+        { desc: "Concrete — Cast in Place", qty: 3600, unit: "SF", unitCost: 10.00 },
+        { desc: "Masonry — CMU", qty: 1, unit: "LS", unitCost: 39000 },
+        { desc: "Structural Steel", qty: 1, unit: "LS", unitCost: 35000 },
+        { desc: "Charging Station Canopy", qty: 1, unit: "LS", unitCost: 50000 },
+        { desc: "Roof Ladder", qty: 1, unit: "LS", unitCost: 9500 },
+        { desc: "Exterior Awnings", qty: 1, unit: "LS", unitCost: 25000 },
+        { desc: "Blocking @ Roof", qty: 1, unit: "LS", unitCost: 3500 },
+        { desc: "Roofing", qty: 3600, unit: "SF", unitCost: 12.50 },
+        { desc: "Charging Station Roof TPO", qty: 1, unit: "LS", unitCost: 14500 },
+        { desc: "Corefill Injection Foam Insulation", qty: 1, unit: "LS", unitCost: 4100 },
+        { desc: "Stucco", qty: 1, unit: "LS", unitCost: 15500 },
+        { desc: "Thin Brick Veneer", qty: 1, unit: "LS", unitCost: 3500 },
+        { desc: "DFH Furnish (5 EA)", qty: 5, unit: "EA", unitCost: 1350 },
+        { desc: "DFH Install (5 EA)", qty: 5, unit: "EA", unitCost: 350 },
+        { desc: "Exterior Glass & Glazing", qty: 3, unit: "EA", unitCost: 30000 },
+        { desc: "Metal Framing & Drywall", qty: 1, unit: "LS", unitCost: 15500 },
+        { desc: "Interior Paint", qty: 1, unit: "LS", unitCost: 4500 },
+        { desc: "Exterior Paint", qty: 1, unit: "LS", unitCost: 10832 },
+        { desc: "Fire Extinguishers", qty: 6, unit: "EA", unitCost: 350 },
+        { desc: "Fire Suppression", qty: 1, unit: "LS", unitCost: 10000 },
+        { desc: "Plumbing", qty: 1, unit: "LS", unitCost: 19500 },
+        { desc: "HVAC Roof Curbs", qty: 1, unit: "LS", unitCost: 6000 },
+        { desc: "Electrical", qty: 3600, unit: "SF", unitCost: 17.00 },
+        { desc: "Site Lighting", qty: 1, unit: "LS", unitCost: 15000 },
+        { desc: "EV Charging Station Rough In & Install", qty: 1, unit: "LS", unitCost: 100000 },
+        { desc: "Fire Alarm", qty: 1, unit: "LS", unitCost: 5000 },
+        { desc: "Earthwork / Sitework", qty: 1, unit: "LS", unitCost: 150000 },
+        { desc: "GC Insurance", qty: 1, unit: "LS", unitCost: 17909 },
+        { desc: "GC Fee (10%)", qty: 1, unit: "LS", unitCost: 89150.72 },
+        { desc: "GC Contingency (8%)", qty: 1, unit: "LS", unitCost: 79885.35 },
+        { desc: "Tenant Improvement Allowance ($40/SF)", qty: 3600, unit: "SF", unitCost: 40 }
+      ]
+    },
+    {
+      id: "soft",
+      name: "Soft Costs — A&E / Professional",
+      items: [
+        { desc: "Architectural Fee", qty: 1, unit: "LS", unitCost: 55000 },
+        { desc: "Civil Engineering", qty: 1, unit: "LS", unitCost: 22000 },
+        { desc: "MEP Engineering", qty: 1, unit: "LS", unitCost: 15000 },
+        { desc: "Structural Engineering", qty: 1, unit: "LS", unitCost: 10000 },
+        { desc: "Landscape Architecture", qty: 1, unit: "LS", unitCost: 6000 },
+        { desc: "ALTA Survey", qty: 1, unit: "LS", unitCost: 4500 },
+        { desc: "Geotechnical / Soils Report", qty: 1, unit: "LS", unitCost: 5000 },
+        { desc: "Environmental Phase I ESA", qty: 1, unit: "LS", unitCost: 3500 },
+        { desc: "Legal — Acquisition & Entity", qty: 1, unit: "LS", unitCost: 8000 },
+        { desc: "Legal — Loan Documentation", qty: 1, unit: "LS", unitCost: 7500 },
+        { desc: "Legal — Lease Negotiation (3 tenants)", qty: 3, unit: "EA", unitCost: 3500 },
+        { desc: "MAI Appraisal", qty: 1, unit: "LS", unitCost: 7500 }
+      ]
+    },
+    {
+      id: "permits",
+      name: "Permits, Fees & Impact Fees",
+      items: [
+        { desc: "Building Permit", qty: 1, unit: "LS", unitCost: 18000 },
+        { desc: "Site Development Permit", qty: 1, unit: "LS", unitCost: 4500 },
+        { desc: "Transportation Impact Fee", qty: 1, unit: "LS", unitCost: 22000 },
+        { desc: "Water Connection / Impact Fee", qty: 1, unit: "LS", unitCost: 8500 },
+        { desc: "Sewer Connection / Impact Fee", qty: 1, unit: "LS", unitCost: 9500 },
+        { desc: "School Impact Fee (if applicable)", qty: 1, unit: "LS", unitCost: 0 },
+        { desc: "Fire Impact / Review Fee", qty: 1, unit: "LS", unitCost: 2500 },
+        { desc: "Private Provider / Plan Review", qty: 1, unit: "LS", unitCost: 5000 }
+      ]
+    },
+    {
+      id: "carry",
+      name: "Carrying Costs — Construction Period",
+      items: [
+        { desc: "Property Taxes (during construction)", qty: 1, unit: "LS", unitCost: 12000 },
+        { desc: "Builder's Risk Insurance", qty: 1, unit: "LS", unitCost: 8500 },
+        { desc: "GL / Owner-Controlled Insurance", qty: 1, unit: "LS", unitCost: 6000 },
+        { desc: "Utilities during construction", qty: 1, unit: "LS", unitCost: 3500 }
+      ]
+    },
+    {
+      id: "finance",
+      name: "Financing Costs",
+      items: [
+        { desc: "Loan Origination Fee (0.50%)", qty: 1, unit: "LS", unitCost: 7950 },
+        { desc: "Lender Title Insurance", qty: 1, unit: "LS", unitCost: 5500 },
+        { desc: "Construction Interest Reserve", qty: 1, unit: "LS", unitCost: 72000 },
+        { desc: "Bank Closing / Admin Fees", qty: 1, unit: "LS", unitCost: 3500 },
+        { desc: "Construction Administrator (Valley)", qty: 1, unit: "LS", unitCost: 7500 }
+      ]
+    },
+    {
+      id: "leasing",
+      name: "Leasing & Marketing",
+      items: [
+        { desc: "Leasing Commission", qty: 1, unit: "LS", unitCost: 0, autoCommission: true },
+        { desc: "Marketing & Signage", qty: 1, unit: "LS", unitCost: 8500 },
+        { desc: "Listing Brokerage Retainer", qty: 1, unit: "LS", unitCost: 3500 }
+      ]
+    },
+    {
+      id: "dev",
+      name: "Developer & Contingency",
+      items: [
+        { desc: "Developer Fee (3%)", qty: 1, unit: "LS", unitCost: 65000 },
+        { desc: "Soft Cost Contingency (5%)", qty: 1, unit: "LS", unitCost: 18000 },
+        { desc: "Project Contingency", qty: 1, unit: "LS", unitCost: 25000 }
+      ]
+    }
+  ]
+};
+
+const STORAGE_KEY = "sabal_park_budget_v1";
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let state = null;
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      state = JSON.parse(raw);
+      // backfill any new assumption fields added in later versions,
+      // so existing saved budgets don't break after an upgrade
+      state.assumptions = Object.assign({}, DEFAULT_DATA.assumptions, state.assumptions || {});
+      return;
+    }
+  } catch (e) { console.warn("load failed", e); }
+  state = JSON.parse(JSON.stringify(DEFAULT_DATA));
+}
+
+let saveTimer = null;
+function save() {
+  const ind = document.getElementById("saveInd");
+  ind.textContent = "Saving...";
+  ind.classList.add("saving");
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      ind.textContent = "Saved " + new Date().toLocaleTimeString();
+      ind.classList.remove("saving");
+    } catch (e) {
+      ind.textContent = "Save error";
+    }
+  }, 250);
+}
+
+/* ============================================================
+   CALCULATIONS
+   ============================================================ */
+function fmt(n) {
+  if (!isFinite(n)) n = 0;
+  return "$" + n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+function fmt2(n) {
+  if (!isFinite(n)) n = 0;
+  return "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function tenYearRent() {
+  const a = state.assumptions;
+  const annual1 = a.bldgSF * a.baseRent; // year 1 total
+  const r = a.escalation / 100;
+  let total = 0;
+  for (let y = 0; y < 10; y++) {
+    total += annual1 * Math.pow(1 + r, y);
+  }
+  return { annual1, total };
+}
+
+function commission() {
+  const { total } = tenYearRent();
+  return total * (state.assumptions.commRate / 100);
+}
+
+function calcNOI() {
+  const a = state.assumptions;
+  const gpr = a.bldgSF * a.baseRent;                    // gross potential rent, Y1
+  const vacLoss = gpr * (a.vacancy / 100);
+  const egi = gpr - vacLoss;
+  const mgmt = egi * (a.mgmtFee / 100);
+  const reserves = a.bldgSF * a.reserves;
+  const noi = egi - mgmt - reserves;
+  return { gpr, vacLoss, egi, mgmt, reserves, noi };
+}
+
+function calcDebtService() {
+  const a = state.assumptions;
+  const P = Number(a.loanAmt) || 0;
+  const r = (Number(a.intRate) || 0) / 100 / 12;
+  const n = (Number(a.amort) || 0) * 12;
+  if (P <= 0 || r <= 0 || n <= 0) return 0;
+  const pmt = P * r / (1 - Math.pow(1 + r, -n));
+  return pmt * 12;
+}
+
+function calcReturns() {
+  const a = state.assumptions;
+  const tdc = grandTotal();
+  const { noi } = calcNOI();
+  const ds = calcDebtService();
+  const roc = tdc > 0 ? noi / tdc : 0;
+  const dscr = ds > 0 ? noi / ds : 0;
+  const ltc = tdc > 0 ? (Number(a.loanAmt) || 0) / tdc : 0;
+  const salePrice = a.exitCap > 0 ? noi / (a.exitCap / 100) : 0;
+  const ltv = salePrice > 0 ? (Number(a.loanAmt) || 0) / salePrice : 0;
+  const costOfSale = salePrice * (a.costSale / 100);
+  const netSale = salePrice - costOfSale;
+  const profit = netSale - tdc;
+  const profitMargin = tdc > 0 ? profit / tdc : 0;
+  return { tdc, noi, ds, roc, dscr, ltc, salePrice, ltv, costOfSale, netSale, profit, profitMargin };
+}
+
+function itemTotal(item) {
+  if (item.autoCommission) return commission();
+  return (Number(item.qty) || 0) * (Number(item.unitCost) || 0);
+}
+
+function categoryTotal(cat) {
+  return cat.items.reduce((s, i) => s + itemTotal(i), 0);
+}
+
+function grandTotal() {
+  return state.categories.reduce((s, c) => s + categoryTotal(c), 0);
+}
+
+/* ============================================================
+   RENDER — Assumptions panel
+   ============================================================ */
+function renderAssumptions() {
+  const a = state.assumptions;
+  const ids = ["bldgSF","numTenants","baseRent","escalation","commRate","constrMonths",
+               "loanAmt","vacancy","mgmtFee","reserves","intRate","amort","exitCap","costSale"];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el && document.activeElement !== el) el.value = a[id];
+  });
+
+  document.getElementById("sfPerTenant").textContent =
+    (a.bldgSF / Math.max(1, a.numTenants)).toLocaleString("en-US", { maximumFractionDigits: 0 }) + " SF";
+
+  const { annual1, total } = tenYearRent();
+  document.getElementById("y1Rent").textContent = fmt(annual1);
+  document.getElementById("tenYrRent").textContent = fmt(total);
+  document.getElementById("commCalc").textContent = fmt(commission());
+
+  const { noi } = calcNOI();
+  document.getElementById("noi").textContent = fmt(noi);
+
+  const ds = calcDebtService();
+  document.getElementById("debtSvc").textContent = fmt(ds);
+
+  const gt = grandTotal();
+  const equity = gt - (Number(a.loanAmt) || 0);
+  document.getElementById("equityReq").textContent = fmt(equity);
+}
+
+function wireAssumptions() {
+  const ids = ["bldgSF","numTenants","baseRent","escalation","commRate","constrMonths",
+               "loanAmt","vacancy","mgmtFee","reserves","intRate","amort","exitCap","costSale"];
+  ids.forEach(id => {
+    document.getElementById(id).addEventListener("input", e => {
+      const v = Number(e.target.value) || 0;
+      state.assumptions[id] = v;
+      renderAssumptions();
+      // commission line in budget depends on rent — refresh budget totals
+      // (only re-render the commission row's total; cheap enough to just re-render)
+      renderBudget();
+      renderSummary();
+      save();
+    });
+  });
+}
+
+/* ============================================================
+   RENDER — Budget table
+   ============================================================ */
+function renderBudget() {
+  const tbody = document.getElementById("budgetBody");
+  tbody.innerHTML = "";
+
+  state.categories.forEach((cat, ci) => {
+    // category header
+    const crow = document.createElement("tr");
+    crow.className = "category-row";
+    crow.innerHTML = `
+      <td contenteditable="true" data-cat="${ci}" class="cat-name">${escapeHtml(cat.name)}</td>
+      <td></td><td></td><td></td>
+      <td class="cat-total">${fmt(categoryTotal(cat))}</td>
+      <td style="text-align:center;">
+        <button class="row-del" data-del-cat="${ci}" title="Delete category">×</button>
+      </td>
+    `;
+    tbody.appendChild(crow);
+
+    // items
+    cat.items.forEach((item, ii) => {
+      const tr = document.createElement("tr");
+      tr.dataset.cat = ci;
+      tr.dataset.item = ii;
+      const autoBadge = item.autoCommission ? '<span class="auto-badge">AUTO</span>' : '';
+      const totalClass = item.autoCommission ? "total auto" : "total";
+      tr.innerHTML = `
+        <td><input class="desc" type="text" value="${escapeAttr(item.desc)}" />${autoBadge}</td>
+        <td><input class="qty" type="number" step="any" value="${item.qty}" ${item.autoCommission ? "disabled" : ""}/></td>
+        <td><input class="unit" type="text" value="${escapeAttr(item.unit)}" /></td>
+        <td><input class="unit-cost" type="number" step="any" value="${item.unitCost}" ${item.autoCommission ? "disabled" : ""}/></td>
+        <td class="${totalClass}">${fmt(itemTotal(item))}</td>
+        <td style="text-align:center;">
+          <button class="row-del" title="Delete line">×</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    // add-row / add-line inside category
+    const add = document.createElement("tr");
+    add.className = "add-row";
+    add.innerHTML = `
+      <td colspan="6">
+        <button class="btn small" data-add-line="${ci}">+ Add line to ${escapeHtml(cat.name)}</button>
+      </td>
+    `;
+    tbody.appendChild(add);
+  });
+
+  wireBudgetEvents();
+}
+
+function wireBudgetEvents() {
+  // category name edit
+  document.querySelectorAll(".cat-name").forEach(el => {
+    el.addEventListener("blur", e => {
+      const ci = +e.target.dataset.cat;
+      state.categories[ci].name = e.target.textContent.trim() || "Untitled Category";
+      save();
+    });
+  });
+
+  // item input edits
+  document.querySelectorAll("#budgetBody tr[data-item]").forEach(tr => {
+    const ci = +tr.dataset.cat, ii = +tr.dataset.item;
+    tr.querySelector(".desc").addEventListener("input", e => {
+      state.categories[ci].items[ii].desc = e.target.value;
+      save();
+    });
+    const qEl = tr.querySelector(".qty");
+    qEl.addEventListener("input", e => {
+      state.categories[ci].items[ii].qty = Number(e.target.value) || 0;
+      updateRowTotals(tr, ci, ii);
+      save();
+    });
+    tr.querySelector(".unit").addEventListener("input", e => {
+      state.categories[ci].items[ii].unit = e.target.value;
+      save();
+    });
+    tr.querySelector(".unit-cost").addEventListener("input", e => {
+      state.categories[ci].items[ii].unitCost = Number(e.target.value) || 0;
+      updateRowTotals(tr, ci, ii);
+      save();
+    });
+    // delete line
+    tr.querySelector(".row-del").addEventListener("click", () => {
+      state.categories[ci].items.splice(ii, 1);
+      renderBudget();
+      renderSummary();
+      renderAssumptions();
+      save();
+    });
+  });
+
+  // add line
+  document.querySelectorAll("[data-add-line]").forEach(btn => {
+    btn.addEventListener("click", e => {
+      const ci = +e.target.dataset.addLine;
+      state.categories[ci].items.push({
+        desc: "New line item",
+        qty: 1,
+        unit: "LS",
+        unitCost: 0
+      });
+      renderBudget();
+      renderSummary();
+      renderAssumptions();
+      save();
+    });
+  });
+
+  // delete category
+  document.querySelectorAll("[data-del-cat]").forEach(btn => {
+    btn.addEventListener("click", e => {
+      const ci = +e.currentTarget.dataset.delCat;
+      if (confirm(`Delete category "${state.categories[ci].name}" and all its line items?`)) {
+        state.categories.splice(ci, 1);
+        renderBudget();
+        renderSummary();
+        renderAssumptions();
+        save();
+      }
+    });
+  });
+}
+
+function updateRowTotals(tr, ci, ii) {
+  const item = state.categories[ci].items[ii];
+  tr.querySelector(".total").textContent = fmt(itemTotal(item));
+  // update category row
+  const catRow = tr.parentNode.querySelector(`tr.category-row[data-cat]`);
+  // rerender just category total & summary to keep it simple
+  const catRows = document.querySelectorAll("tr.category-row");
+  catRows.forEach((cr, idx) => {
+    cr.querySelector(".cat-total").textContent = fmt(categoryTotal(state.categories[idx]));
+  });
+  renderSummary();
+  renderAssumptions();
+}
+
+/* ============================================================
+   SUMMARY
+   ============================================================ */
+function renderSummary() {
+  const hardCats = ["land", "hard"];
+  let hard = 0, soft = 0;
+  state.categories.forEach(c => {
+    if (hardCats.includes(c.id)) hard += categoryTotal(c);
+    else soft += categoryTotal(c);
+  });
+  const gt = grandTotal();
+  const sf = state.assumptions.bldgSF || 1;
+  document.getElementById("hardTotal").textContent = fmt(hard);
+  document.getElementById("softTotal").textContent = fmt(soft);
+  document.getElementById("grandTotal").textContent = fmt(gt);
+  document.getElementById("costPSF").textContent = fmt(gt / sf);
+
+  // Returns & Debt
+  const r = calcReturns();
+  const pct = v => (v * 100).toLocaleString("en-US", { maximumFractionDigits: 2 }) + "%";
+  const x = v => v.toLocaleString("en-US", { maximumFractionDigits: 2 }) + "x";
+
+  const rocEl = document.getElementById("roc");
+  rocEl.textContent = pct(r.roc);
+  rocEl.className = "value " + classByThreshold(r.roc, 0.08, 0.075, "up"); // >=8% good, 7.5-8% warn, <7.5% bad
+  document.getElementById("rocSub").textContent =
+    "NOI " + fmt(r.noi) + " ÷ " + fmt(r.tdc);
+
+  const dscrEl = document.getElementById("dscr");
+  dscrEl.textContent = r.ds > 0 ? x(r.dscr) : "—";
+  dscrEl.className = "value " + classByThreshold(r.dscr, 1.25, 1.15, "up"); // >=1.25 good, 1.15-1.25 warn
+  document.getElementById("dscrSub").textContent =
+    r.ds > 0
+      ? "NOI ÷ " + fmt(r.ds) + " DS"
+      : "Set loan, rate & amort";
+
+  const ltcEl = document.getElementById("ltc");
+  ltcEl.textContent = pct(r.ltc);
+  ltcEl.className = "value " + classByThreshold(r.ltc, 0.75, 0.85, "down"); // <=75% good, 75-85% warn
+  document.getElementById("ltcSub").textContent =
+    fmt(state.assumptions.loanAmt || 0) + " ÷ " + fmt(r.tdc) + " · Valley cap 75%";
+
+  const ltvEl = document.getElementById("ltv");
+  ltvEl.textContent = r.salePrice > 0 ? pct(r.ltv) : "—";
+  ltvEl.className = "value " + classByThreshold(r.ltv, 0.70, 0.75, "down"); // <=70% good
+  document.getElementById("ltvSub").textContent =
+    r.salePrice > 0
+      ? fmt(state.assumptions.loanAmt || 0) + " ÷ " + fmt(r.salePrice) + " · Valley cap 70%"
+      : "Set exit cap rate";
+
+  // Exit / Sale
+  document.getElementById("salePrice").textContent = fmt(r.salePrice);
+  document.getElementById("salePriceSub").textContent =
+    fmt(r.noi) + " ÷ " + (state.assumptions.exitCap || 0).toFixed(2) + "% cap";
+
+  document.getElementById("costOfSaleVal").textContent = fmt(r.costOfSale);
+  document.getElementById("costOfSaleSub").textContent =
+    (state.assumptions.costSale || 0).toFixed(2) + "% of sale price";
+
+  document.getElementById("netSale").textContent = fmt(r.netSale);
+
+  const profitEl = document.getElementById("profit");
+  profitEl.textContent = fmt(r.profit);
+  document.getElementById("profitSub").textContent =
+    "Margin " + pct(r.profitMargin) + " on cost";
+}
+
+function classByThreshold(v, goodAt, warnAt, direction) {
+  // direction "up" = higher is better; "down" = lower is better
+  if (direction === "up") {
+    if (v >= goodAt) return "metric-good";
+    if (v >= warnAt) return "metric-warn";
+    return "metric-bad";
+  } else {
+    if (v <= goodAt) return "metric-good";
+    if (v <= warnAt) return "metric-warn";
+    return "metric-bad";
+  }
+}
+
+/* ============================================================
+   ADD CATEGORY / RESET / EXPORT
+   ============================================================ */
+document.getElementById("addCategoryBtn").addEventListener("click", () => {
+  const name = prompt("Category name?", "New Category");
+  if (!name) return;
+  state.categories.push({
+    id: "c" + Date.now(),
+    name: name,
+    items: [{ desc: "New line item", qty: 1, unit: "LS", unitCost: 0 }]
+  });
+  renderBudget();
+  renderSummary();
+  renderAssumptions();
+  save();
+});
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  if (confirm("Reset to the default Sabal Park budget? All your edits will be lost.")) {
+    state = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    renderAll();
+    save();
+  }
+});
+
+document.getElementById("exportBtn").addEventListener("click", () => {
+  let csv = "Category,Description,Qty,Unit,Unit Cost,Total\n";
+  state.categories.forEach(c => {
+    c.items.forEach(i => {
+      const total = itemTotal(i);
+      csv += [
+        csvEsc(c.name),
+        csvEsc(i.desc),
+        i.qty,
+        csvEsc(i.unit),
+        i.unitCost,
+        total.toFixed(2)
+      ].join(",") + "\n";
+    });
+    csv += `"${c.name} TOTAL",,,,,${categoryTotal(c).toFixed(2)}\n`;
+  });
+  csv += `\nGRAND TOTAL,,,,,${grandTotal().toFixed(2)}\n`;
+  csv += `Cost PSF,,,,,${(grandTotal() / state.assumptions.bldgSF).toFixed(2)}\n`;
+
+  const blob = new Blob([csv], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "Sabal_Park_Budget_" + new Date().toISOString().slice(0, 10) + ".csv";
+  a.click();
+});
+
+function csvEsc(s) {
+  s = String(s);
+  if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+}
+function escapeAttr(s) {
+  return String(s).replace(/"/g, "&quot;");
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+function renderAll() {
+  renderAssumptions();
+  renderBudget();
+  renderSummary();
+  renderAssumptions(); // refresh equity after budget renders
+}
+
+load();
+wireAssumptions();
+renderAll();
+</script>
+</body>
+</html>
